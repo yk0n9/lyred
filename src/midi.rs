@@ -1,10 +1,6 @@
 use std::fs::read;
-use std::thread::sleep;
-use std::time::Duration;
 use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 use anyhow::Result;
-use chrono::Local;
-use enigo::{Enigo, Key, KeyboardControllable};
 
 struct Event<'a> {
     event: TrackEventKind<'a>,
@@ -21,7 +17,7 @@ const MAP: [i32; 42] = [24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 
 
 pub fn init(path: &str) -> Result<Vec<KeyEvent>> {
     let file = read(path).unwrap();
-    let midi = Smf::parse(&file).unwrap();
+    let midi = Smf::parse(&file).expect("Not a Midi File");
     let resolution = match midi.header.timing {
         Timing::Metrical(resolution) => { resolution.as_int() as f64 }
         _ => { unimplemented!() }
@@ -46,7 +42,7 @@ pub fn init(path: &str) -> Result<Vec<KeyEvent>> {
     let mut tick = 0.;
     let mut tempo = 500000.;
     for event in events {
-        let mut time: f64;
+        let time: f64;
 
         if let TrackEventKind::Meta(MetaMessage::Tempo(t)) = event.event {
             tempo = t.as_int() as f64;

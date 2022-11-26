@@ -1,6 +1,5 @@
 use std::path::PathBuf;
-use std::thread;
-use std::thread::{scope, sleep};
+use std::thread::sleep;
 use std::time::Duration;
 use chrono::Local;
 use eframe::egui::{Context, FontId, Vec2};
@@ -12,9 +11,8 @@ use enigo::{Enigo, Key, KeyboardControllable};
 use rs_midi_player::midi::{c, init, KeyEvent, tune};
 use egui::TextStyle::*;
 use egui_file::FileDialog;
-use anyhow::Result;
-use tokio::runtime::{Builder, Runtime};
-use tokio::task;
+use windows_hotkeys::get_global_keystate;
+use windows_hotkeys::keys::VKey;
 
 fn main() {
     let options = NativeOptions {
@@ -34,16 +32,10 @@ pub struct Player {
     pub opened_file: Option<PathBuf>,
     pub open_file_dialog: Option<FileDialog>,
     pub events: Vec<KeyEvent>,
-    pub runtime: Runtime,
 }
 
 impl Default for Player {
     fn default() -> Self {
-        let runtime = Builder::new_multi_thread()
-            .worker_threads(1)
-            .enable_all()
-            .build()
-            .unwrap();
         Self {
             speed: 1.0,
             tuned: false,
@@ -52,7 +44,6 @@ impl Default for Player {
             opened_file: None,
             open_file_dialog: None,
             events: vec![],
-            runtime,
         }
     }
 }
@@ -60,18 +51,23 @@ impl Default for Player {
 impl Player {
     pub fn playback(&mut self, message: Vec<KeyEvent>) {
         let mut click = Enigo::new();
-
         let mut shift = 0;
 
         if self.tuned {
             shift = tune(message.clone());
         }
 
-        let mut start_time = Local::now().timestamp_millis();
+        let start_time = Local::now().timestamp_millis();
         let mut input_time = 0.;
         for msg in message.into_iter() {
-            while let true = self.pause {
-                start_time = Local::now().timestamp_millis();
+            if get_global_keystate(VKey::Shift) {
+                break;
+            }
+            if get_global_keystate(VKey::Up) {
+                self.speed += 0.1;
+            }
+            if get_global_keystate(VKey::Down) {
+                self.speed -= 0.1;
             }
 
             input_time += msg.delay / self.speed;
@@ -145,11 +141,8 @@ impl eframe::App for Player {
             ui.checkbox(&mut self.tuned, "Whether to tune");
             ui.separator();
 
-            if ui.button("Start Playback").clicked() {
-                let res = task::spawn_blocking(move || {
-                    sleep(Duration::from_millis(2000));
-                    self.playback(self.events.clone());
-                }).await?;
+            if ui.button("Start Playback").clicked() || get_global_keystate(VKey::Space) {
+                self.playback(self.events.clone());
             }
         });
     }
