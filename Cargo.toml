@@ -1,0 +1,18 @@
+[package]
+name = "rs-midi-player"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+chrono = "0.4"
+
+midly = "0.5"
+enigo = { path = "enigo" }
+anyhow = "1"
+
+[[bin]]
+name = "demo"
+path = "src/demo.rs"
