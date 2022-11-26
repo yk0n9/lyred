@@ -11,10 +11,13 @@ struct Event<'a> {
     tick: u64,
 }
 
+#[derive(Clone)]
 pub struct KeyEvent {
-    press: Option<char>,
+    press: u8,
     delay: f64,
 }
+
+const MAP: [i32; 42] = [24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95];
 
 pub fn init(path: &str) -> Result<Vec<KeyEvent>> {
     let file = read(path).unwrap();
@@ -53,7 +56,7 @@ pub fn init(path: &str) -> Result<Vec<KeyEvent>> {
             if vel > 0 {
                 time = (event.tick as f64 - tick) * (tempo / 1000. / resolution);
                 tick = event.tick as f64;
-                result.push(KeyEvent { press: c(key.as_int()), delay: time });
+                result.push(KeyEvent { press: key.as_int(), delay: time });
             }
         }
     }
@@ -61,12 +64,18 @@ pub fn init(path: &str) -> Result<Vec<KeyEvent>> {
     Ok(result)
 }
 
-pub fn playback(message: Vec<KeyEvent>, speed: f64) {
+pub fn playback(message: Vec<KeyEvent>, speed: f64, tuned: bool) {
     let mut click = Enigo::new();
+
+    let mut shift = 0;
+
+    if tuned {
+        shift = tune(message.clone());
+    }
 
     let start_time = Local::now().timestamp_millis();
     let mut input_time = 0.;
-    for msg in message {
+    for msg in message.into_iter() {
         input_time += msg.delay / speed;
 
         let playback_time = (Local::now().timestamp_millis() - start_time) as f64;
@@ -75,7 +84,7 @@ pub fn playback(message: Vec<KeyEvent>, speed: f64) {
             sleep(Duration::from_millis(current_time));
         }
 
-        match msg.press {
+        match c((msg.press as i32 + shift) as u8) {
             Some(key) => {
                 click.key_down(Key::Layout(key));
                 click.key_up(Key::Layout(key));
@@ -83,6 +92,73 @@ pub fn playback(message: Vec<KeyEvent>, speed: f64) {
             _ => {}
         }
     }
+}
+
+fn tune(message: Vec<KeyEvent>) -> i32 {
+    let mut up_hit = vec![];
+    let mut down_hit = vec![];
+    tune_up(message.clone(), &mut up_hit, 0);
+    tune_down(message.clone(), &mut down_hit, 0);
+
+    let mut up_max = 0.;
+    let mut down_max = 0.;
+    let mut up_shift = 0;
+    let mut down_shift = 0;
+    for (i, x) in up_hit.iter().enumerate() {
+        if *x > up_max {
+            up_max = *x;
+            up_shift = i as i32;
+        }
+    }
+    for (i, x) in down_hit.iter().enumerate() {
+        if *x > down_max {
+            down_max = *x;
+            down_shift = i as i32;
+        }
+    }
+
+    if up_shift > down_shift {
+        println!("Hit: {}", up_max);
+        return up_shift;
+    }
+    println!("Hit: {}", down_max);
+    -down_shift
+}
+
+fn tune_up(message: Vec<KeyEvent>, hit_vec: &mut Vec<f32>, offset: i32) {
+    let mut hit_count = 0.;
+    let len = message.len() as f32;
+    for msg in &message {
+        let key = msg.press as i32 + offset;
+        if MAP.contains(&key) {
+            hit_count += 1.;
+        }
+    }
+    let hit = hit_count / len;
+    hit_vec.push(hit);
+
+    if offset > 21 {
+        return;
+    }
+    tune_up(message, hit_vec, offset + 1);
+}
+
+fn tune_down(message: Vec<KeyEvent>, hit_vec: &mut Vec<f32>, offset: i32) {
+    let mut hit_count = 0.;
+    let len = message.len() as f32;
+    for msg in &message {
+        let key = msg.press as i32 + offset;
+        if MAP.contains(&key) {
+            hit_count += 1.;
+        }
+    }
+    let hit = hit_count / len;
+    hit_vec.push(hit);
+
+    if offset < -21 {
+        return;
+    }
+    tune_down(message, hit_vec, offset - 1);
 }
 
 fn c(key: u8) -> Option<char> {

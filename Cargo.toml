@@ -13,6 +13,12 @@ midly = "0.5"
 enigo = { path = "src/enigo" }
 anyhow = "1"
 
+eframe = "0.19"
+
 [[bin]]
 name = "demo"
 path = "src/demo.rs"
+
+[[bin]]
+name = "player"
+path = "src/player.rs"

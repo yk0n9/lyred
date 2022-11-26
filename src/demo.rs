@@ -9,6 +9,6 @@ fn main() {
 
     println!("Start");
     sleep(Duration::from_millis(500));
-    playback(events, 1.);
+    playback(events, 1., true);
     println!("Playback end")
 }
