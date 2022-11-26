@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::thread::sleep;
 use std::time::Duration;
 use chrono::Local;
-use eframe::egui::{Context, FontId, Vec2};
+use eframe::egui::{Context, FontId, Slider, Vec2};
 use eframe::{egui, Frame, NativeOptions};
 use eframe::egui::FontFamily::Proportional;
 use eframe::egui::TextStyle::{Body, Heading, Small};
@@ -67,7 +67,9 @@ impl Player {
                 self.speed += 0.1;
             }
             if get_global_keystate(VKey::Down) {
-                self.speed -= 0.1;
+                if self.speed > 0.1 {
+                    self.speed -= 0.1;
+                }
             }
 
             input_time += msg.delay / self.speed;
@@ -148,6 +150,7 @@ impl eframe::App for Player {
             }
             ui.separator();
             ui.label(&format!("你的播放速度是: {}x", self.speed));
+            ui.add(Slider::new(&mut self.speed, 0.1..=5.0).text("速度"));
             if ui.button("- 0.1x").clicked() {
                 if self.speed > 0.1 {
                     self.speed -= 0.1;
