@@ -92,6 +92,22 @@ impl Player {
 impl eframe::App for Player {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         ctx.request_repaint();
+        let mut fonts = egui::FontDefinitions::default();
+        fonts.font_data.insert(
+            "my_font".to_owned(),
+            egui::FontData::from_static(include_bytes!("simkai.ttf")),
+        );
+        fonts
+            .families
+            .entry(Proportional)
+            .or_default()
+            .insert(0, "my_font".to_owned());
+        fonts
+            .families
+            .entry(egui::FontFamily::Monospace)
+            .or_default()
+            .push("my_font".to_owned());
+        ctx.set_fonts(fonts);
         let mut style = (*ctx.style()).clone();
 
         style.text_styles = [
@@ -110,8 +126,8 @@ impl eframe::App for Player {
             ui.label("Midi-Player by Ykong1337");
             ui.separator();
             ui.horizontal(|ui| {
-                ui.label("Select your MIDI File");
-                if (ui.button("Open")).clicked() {
+                ui.label("选择你的MIDI文件");
+                if (ui.button("打开")).clicked() {
                     let mut dialog = FileDialog::open_file(self.opened_file.clone());
                     dialog.open();
                     self.open_file_dialog = Some(dialog);
@@ -126,24 +142,29 @@ impl eframe::App for Player {
                 }
             });
             if let Some(path) = &self.opened_file {
-                ui.label(&format!("You select {}", path.to_str().unwrap()));
+                ui.label(&format!("你选择的是: {}", path.to_str().unwrap()));
                 self.events = init(path.to_str().unwrap()).unwrap();
                 self.kill = false;
             }
             ui.separator();
-            ui.label(&format!("Your play speed = {}x", self.speed));
+            ui.label(&format!("你的播放速度是: {}x", self.speed));
             if ui.button("- 0.1x").clicked() {
-                self.speed -= 0.1;
+                if self.speed > 0.1 {
+                    self.speed -= 0.1;
+                }
             }
             if ui.button("+ 0.1x").clicked() {
                 self.speed += 0.1;
             }
-            ui.checkbox(&mut self.tuned, "Whether to tune");
+            ui.checkbox(&mut self.tuned, "开启自动调音");
             ui.separator();
 
-            if ui.button("Start Playback").clicked() || get_global_keystate(VKey::Space) {
+            if ui.button("开始播放").clicked() || get_global_keystate(VKey::Space) {
                 self.playback(self.events.clone());
             }
+            ui.separator();
+            ui.label("点击开始播放或按下Space键开始播放");
+            ui.label("按下Shift键停止播放");
         });
     }
 }
