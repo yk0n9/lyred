@@ -10,7 +10,7 @@ edition = "2021"
 chrono = "0.4"
 
 midly = "0.5"
-enigo = { path = "enigo" }
+enigo = { path = "src/enigo" }
 anyhow = "1"
 
 [[bin]]
