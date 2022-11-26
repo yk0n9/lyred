@@ -3,4 +3,4 @@
 todo:
 
 - GUI interface
-- auto tune
+- ~~auto tune~~
