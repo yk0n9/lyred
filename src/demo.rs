@@ -1,7 +1,6 @@
 use std::thread::sleep;
 use std::time::Duration;
-use enigo::{Enigo, Key, KeyboardControllable};
-use crate::midi::{init, playback};
+use rs_midi_player::midi::{init, playback};
 
 mod midi;
 

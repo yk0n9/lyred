@@ -1,7 +1,6 @@
 use std::fs::read;
-use std::thread::{current, sleep};
-use std::time;
-use std::time::{Duration, SystemTime};
+use std::thread::sleep;
+use std::time::Duration;
 use anyhow::Result;
 use chrono::Local;
 use enigo::{Enigo, Key, KeyboardControllable};
