@@ -1,10 +1,10 @@
 use std::fs::read;
 use std::thread::sleep;
 use std::time::Duration;
+use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 use anyhow::Result;
 use chrono::Local;
 use enigo::{Enigo, Key, KeyboardControllable};
-use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 
 struct Event<'a> {
     event: TrackEventKind<'a>,
@@ -13,8 +13,8 @@ struct Event<'a> {
 
 #[derive(Clone)]
 pub struct KeyEvent {
-    press: u8,
-    delay: f64,
+    pub press: u8,
+    pub delay: f64,
 }
 
 const MAP: [i32; 42] = [24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95];
@@ -64,37 +64,37 @@ pub fn init(path: &str) -> Result<Vec<KeyEvent>> {
     Ok(result)
 }
 
-pub fn playback(message: Vec<KeyEvent>, speed: f64, tuned: bool) {
-    let mut click = Enigo::new();
+// pub fn playback(message: Vec<KeyEvent>, speed: f64, tuned: bool) {
+//     let mut click = Enigo::new();
+//
+//     let mut shift = 0;
+//
+//     if tuned {
+//         shift = tune(message.clone());
+//     }
+//
+//     let start_time = Local::now().timestamp_millis();
+//     let mut input_time = 0.;
+//     for msg in message.into_iter() {
+//         input_time += msg.delay / speed;
+//
+//         let playback_time = (Local::now().timestamp_millis() - start_time) as f64;
+//         let current_time = (input_time - playback_time) as u64;
+//         if current_time > 0 {
+//             sleep(Duration::from_millis(current_time));
+//         }
+//
+//         match c((msg.press as i32 + shift) as u8) {
+//             Some(key) => {
+//                 click.key_down(Key::Layout(key));
+//                 click.key_up(Key::Layout(key));
+//             }
+//             _ => {}
+//         }
+//     }
+// }
 
-    let mut shift = 0;
-
-    if tuned {
-        shift = tune(message.clone());
-    }
-
-    let start_time = Local::now().timestamp_millis();
-    let mut input_time = 0.;
-    for msg in message.into_iter() {
-        input_time += msg.delay / speed;
-
-        let playback_time = (Local::now().timestamp_millis() - start_time) as f64;
-        let current_time = (input_time - playback_time) as u64;
-        if current_time > 0 {
-            sleep(Duration::from_millis(current_time));
-        }
-
-        match c((msg.press as i32 + shift) as u8) {
-            Some(key) => {
-                click.key_down(Key::Layout(key));
-                click.key_up(Key::Layout(key));
-            }
-            _ => {}
-        }
-    }
-}
-
-fn tune(message: Vec<KeyEvent>) -> i32 {
+pub fn tune(message: Vec<KeyEvent>) -> i32 {
     let mut up_hit = vec![];
     let mut down_hit = vec![];
     tune_up(message.clone(), &mut up_hit, 0);
@@ -161,7 +161,7 @@ fn tune_down(message: Vec<KeyEvent>, hit_vec: &mut Vec<f32>, offset: i32) {
     tune_down(message, hit_vec, offset - 1);
 }
 
-fn c(key: u8) -> Option<char> {
+pub fn c(key: u8) -> Option<char> {
     Some(
         match key {
             24 => 'z',

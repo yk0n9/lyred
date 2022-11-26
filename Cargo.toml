@@ -14,10 +14,13 @@ enigo = { path = "src/enigo" }
 anyhow = "1"
 
 eframe = "0.19"
+egui_file = "0.3"
+tokio = { version = "1", features = ["full"] }
 
-[[bin]]
-name = "demo"
-path = "src/demo.rs"
+
+#[[bin]]
+#name = "demo"
+#path = "src/demo.rs"
 
 [[bin]]
 name = "player"
