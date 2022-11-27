@@ -27,8 +27,6 @@ fn main() {
 pub struct Player {
     pub speed: f64,
     pub tuned: bool,
-    pub pause: bool,
-    pub kill: bool,
     pub opened_file: Option<PathBuf>,
     pub open_file_dialog: Option<FileDialog>,
     pub events: Vec<KeyEvent>,
@@ -39,8 +37,6 @@ impl Default for Player {
         Self {
             speed: 1.0,
             tuned: false,
-            pause: false,
-            kill: false,
             opened_file: None,
             open_file_dialog: None,
             events: vec![],
@@ -146,7 +142,6 @@ impl eframe::App for Player {
             if let Some(path) = &self.opened_file {
                 ui.label(&format!("你选择的是: {}", path.to_str().unwrap()));
                 self.events = init(path.to_str().unwrap()).unwrap();
-                self.kill = false;
             }
             ui.separator();
             ui.label(&format!("你的播放速度是: {}x", self.speed));
