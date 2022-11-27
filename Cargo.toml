@@ -2,6 +2,7 @@
 name = "rs-midi-player"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -20,6 +21,8 @@ windows-hotkeys = "0.1"
 #[[bin]]
 #name = "demo"
 #path = "src/demo.rs"
+[target.'cfg(target_os="windows")'.build-dependencies]
+winres = "0.1"
 
 [[bin]]
 name = "player"
