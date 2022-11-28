@@ -37,7 +37,7 @@ pub fn init(path: &str) -> Result<Vec<KeyEvent>> {
         }
     }
 
-    events.sort_by_key(|e| e.tick);
+    events.sort_by_key(|e| e.tick as u64);
 
     let mut tick = 0.;
     let mut tempo = 500000.;
