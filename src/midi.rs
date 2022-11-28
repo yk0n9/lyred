@@ -4,7 +4,7 @@ use anyhow::Result;
 
 struct Event<'a> {
     event: TrackEventKind<'a>,
-    tick: u64,
+    tick: f64,
 }
 
 #[derive(Clone)]
@@ -32,7 +32,7 @@ pub fn init(path: &str) -> Result<Vec<KeyEvent>> {
             tick += event.delta.as_int() as f64;
             events.push(Event {
                 event: event.kind,
-                tick: tick as u64,
+                tick,
             })
         }
     }
@@ -50,8 +50,8 @@ pub fn init(path: &str) -> Result<Vec<KeyEvent>> {
 
         if let TrackEventKind::Midi { channel: _, message: MidiMessage::NoteOn { key, vel } } = event.event {
             if vel > 0 {
-                time = (event.tick as f64 - tick) * (tempo / 1000. / resolution);
-                tick = event.tick as f64;
+                time = (event.tick - tick) * (tempo / 1000. / resolution);
+                tick = event.tick;
                 result.push(KeyEvent { press: key.as_int(), delay: time });
             }
         }
