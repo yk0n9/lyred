@@ -2,5 +2,6 @@
 
 todo:
 
-- GUI interface
+- ~~GUI interface~~
 - ~~auto tune~~
+- in parallel with threads
