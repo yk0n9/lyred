@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
 use chrono::Local;
@@ -27,6 +28,8 @@ fn main() {
 pub struct Player {
     pub speed: f64,
     pub tuned: bool,
+    pub is_play: bool,
+    pub state: String,
     pub opened_file: Option<PathBuf>,
     pub open_file_dialog: Option<FileDialog>,
     pub events: Vec<KeyEvent>,
@@ -37,6 +40,8 @@ impl Default for Player {
         Self {
             speed: 1.0,
             tuned: false,
+            is_play: false,
+            state: format!("已停止播放"),
             opened_file: None,
             open_file_dialog: None,
             events: vec![],
@@ -45,45 +50,39 @@ impl Default for Player {
 }
 
 impl Player {
-    pub fn playback(&mut self, message: Vec<KeyEvent>) {
-        let mut click = Enigo::new();
-        let mut shift = 0;
+    pub fn playback(message: Vec<KeyEvent>, tuned: bool, speed: f64) {
+        let _ = thread::spawn(move || {
+            let mut click = Enigo::new();
+            let mut shift = 0;
 
-        if self.tuned {
-            shift = tune(message.clone());
-        }
+            if tuned {
+                shift = tune(message.clone());
+            }
 
-        let start_time = Local::now().timestamp_millis();
-        let mut input_time = 0.;
-        for msg in message.into_iter() {
-            if get_global_keystate(VKey::Shift) {
-                break;
-            }
-            if get_global_keystate(VKey::Up) {
-                self.speed += 0.1;
-            }
-            if get_global_keystate(VKey::Down) {
-                if self.speed > 0.1 {
-                    self.speed -= 0.1;
+            let start_time = Local::now().timestamp_millis();
+            let mut input_time = 0.;
+            for msg in message.into_iter() {
+                if get_global_keystate(VKey::Shift) {
+                    break;
+                }
+
+                input_time += msg.delay / speed;
+
+                let playback_time = (Local::now().timestamp_millis() - start_time) as f64;
+                let current_time = (input_time - playback_time) as u64;
+                if current_time > 0 {
+                    sleep(Duration::from_millis(current_time));
+                }
+
+                match c((msg.press as i32 + shift) as u8) {
+                    Some(key) => {
+                        click.key_down(Key::Layout(key));
+                        click.key_up(Key::Layout(key));
+                    }
+                    _ => {}
                 }
             }
-
-            input_time += msg.delay / self.speed;
-
-            let playback_time = (Local::now().timestamp_millis() - start_time) as f64;
-            let current_time = (input_time - playback_time) as u64;
-            if current_time > 0 {
-                sleep(Duration::from_millis(current_time));
-            }
-
-            match c((msg.press as i32 + shift) as u8) {
-                Some(key) => {
-                    click.key_down(Key::Layout(key));
-                    click.key_up(Key::Layout(key));
-                }
-                _ => {}
-            }
-        }
+        });
     }
 }
 
@@ -156,12 +155,20 @@ impl eframe::App for Player {
             }
             ui.checkbox(&mut self.tuned, "开启自动调音");
             ui.separator();
-
-            if ui.button("开始播放").clicked() || get_global_keystate(VKey::Return) {
-                self.playback(self.events.clone());
+            ui.label(&self.state);
+            if get_global_keystate(VKey::Return) {
+                if !self.is_play {
+                    self.is_play = true;
+                    self.state = format!("正在播放中...");
+                    Player::playback(self.events.clone(), self.tuned, self.speed);
+                }
+            }
+            if get_global_keystate(VKey::Shift) {
+                self.is_play = false;
+                self.state = format!("已停止播放");
             }
             ui.separator();
-            ui.label("点击开始播放或按下回车键开始播放");
+            ui.label("按下Enter键开始播放");
             ui.label("按下Shift键停止播放");
         });
     }
