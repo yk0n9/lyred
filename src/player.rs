@@ -157,11 +157,11 @@ impl eframe::App for Player {
             ui.checkbox(&mut self.tuned, "开启自动调音");
             ui.separator();
 
-            if ui.button("开始播放").clicked() || get_global_keystate(VKey::Space) {
+            if ui.button("开始播放").clicked() || get_global_keystate(VKey::Return) {
                 self.playback(self.events.clone());
             }
             ui.separator();
-            ui.label("点击开始播放或按下Space键开始播放");
+            ui.label("点击开始播放或按下回车键开始播放");
             ui.label("按下Shift键停止播放");
         });
     }
