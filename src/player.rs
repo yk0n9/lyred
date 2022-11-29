@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
@@ -26,9 +27,9 @@ fn main() {
 }
 
 pub struct Player {
-    pub speed: f64,
+    pub speed: Arc<Mutex<f64>>,
     pub tuned: bool,
-    pub is_play: bool,
+    pub is_play: Arc<Mutex<bool>>,
     pub state: String,
     pub opened_file: Option<PathBuf>,
     pub open_file_dialog: Option<FileDialog>,
@@ -38,9 +39,9 @@ pub struct Player {
 impl Default for Player {
     fn default() -> Self {
         Self {
-            speed: 1.0,
+            speed: Arc::new(Mutex::new(1.0)),
             tuned: false,
-            is_play: false,
+            is_play: Arc::new(Mutex::new(false)),
             state: format!("已停止播放"),
             opened_file: None,
             open_file_dialog: None,
@@ -50,7 +51,7 @@ impl Default for Player {
 }
 
 impl Player {
-    pub fn playback(message: Vec<KeyEvent>, tuned: bool, speed: f64) {
+    pub fn playback(message: Vec<KeyEvent>, tuned: bool, speed: Arc<Mutex<f64>>, is_play: Arc<Mutex<bool>>) {
         let _ = thread::spawn(move || {
             let mut click = Enigo::new();
             let mut shift = 0;
@@ -62,11 +63,11 @@ impl Player {
             let start_time = Local::now().timestamp_millis();
             let mut input_time = 0.;
             for msg in message.into_iter() {
-                if get_global_keystate(VKey::Shift) {
+                if !*is_play.lock().unwrap() {
                     break;
                 }
 
-                input_time += msg.delay / speed;
+                input_time += msg.delay / *speed.lock().unwrap();
 
                 let playback_time = (Local::now().timestamp_millis() - start_time) as f64;
                 let current_time = (input_time - playback_time) as u64;
@@ -82,6 +83,7 @@ impl Player {
                     _ => {}
                 }
             }
+            *is_play.lock().unwrap() = false;
         });
     }
 }
@@ -119,6 +121,8 @@ impl eframe::App for Player {
 
         ctx.set_style(style);
 
+        let is_play = Arc::clone(&self.is_play);
+        let speed = Arc::clone(&self.speed);
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.label("Midi-Player by Ykong1337");
             ui.separator();
@@ -143,28 +147,32 @@ impl eframe::App for Player {
                 self.events = init(path.to_str().unwrap()).unwrap();
             }
             ui.separator();
-            ui.label(&format!("你的播放速度是: {}x", self.speed));
-            ui.add(Slider::new(&mut self.speed, 0.1..=5.0).text("速度"));
+            ui.label(&format!("你的播放速度是: {}x", *speed.lock().unwrap()));
+            ui.add(Slider::new(&mut *speed.lock().unwrap(), 0.1..=5.0).text("速度"));
             if ui.button("- 0.1x").clicked() {
-                if self.speed > 0.1 {
-                    self.speed -= 0.1;
+                if *speed.lock().unwrap() > 0.1 {
+                    *speed.lock().unwrap() -= 0.1;
                 }
             }
             if ui.button("+ 0.1x").clicked() {
-                self.speed += 0.1;
+                *speed.lock().unwrap() += 0.1;
             }
             ui.checkbox(&mut self.tuned, "开启自动调音");
             ui.separator();
             ui.label(&self.state);
             if get_global_keystate(VKey::Return) {
-                if !self.is_play {
-                    self.is_play = true;
-                    self.state = format!("正在播放中...");
-                    Player::playback(self.events.clone(), self.tuned, self.speed);
+                if !*is_play.lock().unwrap() {
+                    *is_play.lock().unwrap() = true;
+                    Player::playback(self.events.clone(), self.tuned, Arc::clone(&self.speed), Arc::clone(&self.is_play));
                 }
             }
             if get_global_keystate(VKey::Shift) {
-                self.is_play = false;
+                *is_play.lock().unwrap() = false;
+            }
+            if *is_play.lock().unwrap() {
+                self.state = format!("正在播放中...");
+            }
+            if !*is_play.lock().unwrap() {
                 self.state = format!("已停止播放");
             }
             ui.separator();
