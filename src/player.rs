@@ -30,6 +30,7 @@ pub struct Player {
     pub speed: Arc<Mutex<f64>>,
     pub tuned: bool,
     pub is_play: Arc<Mutex<bool>>,
+    pub pause: Arc<Mutex<bool>>,
     pub state: String,
     pub opened_file: Option<PathBuf>,
     pub open_file_dialog: Option<FileDialog>,
@@ -42,6 +43,7 @@ impl Default for Player {
             speed: Arc::new(Mutex::new(1.0)),
             tuned: false,
             is_play: Arc::new(Mutex::new(false)),
+            pause: Arc::new(Mutex::new(false)),
             state: format!("已停止播放"),
             opened_file: None,
             open_file_dialog: None,
@@ -51,7 +53,7 @@ impl Default for Player {
 }
 
 impl Player {
-    pub fn playback(message: Vec<KeyEvent>, tuned: bool, speed: Arc<Mutex<f64>>, is_play: Arc<Mutex<bool>>) {
+    pub fn playback(message: Vec<KeyEvent>, tuned: bool, speed: Arc<Mutex<f64>>, is_play: Arc<Mutex<bool>>, pause: Arc<Mutex<bool>>) {
         let _ = thread::spawn(move || {
             let mut click = Enigo::new();
             let mut shift = 0;
@@ -60,11 +62,15 @@ impl Player {
                 shift = tune(message.clone());
             }
 
-            let start_time = Local::now().timestamp_millis();
+            let mut start_time = Local::now().timestamp_millis();
             let mut input_time = 0.;
             for msg in message.into_iter() {
                 if !*is_play.lock().unwrap() {
                     break;
+                }
+                while let true = *pause.lock().unwrap() {
+                    input_time = msg.delay;
+                    start_time = Local::now().timestamp_millis();
                 }
 
                 input_time += msg.delay / *speed.lock().unwrap();
@@ -123,6 +129,7 @@ impl eframe::App for Player {
 
         let is_play = Arc::clone(&self.is_play);
         let speed = Arc::clone(&self.speed);
+        let pause = Arc::clone(&self.pause);
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.label("Midi-Player by Ykong1337");
             ui.separator();
@@ -161,22 +168,32 @@ impl eframe::App for Player {
             ui.separator();
             ui.label(&self.state);
             if get_global_keystate(VKey::Return) {
+                *pause.lock().unwrap() = false;
                 if !*is_play.lock().unwrap() {
                     *is_play.lock().unwrap() = true;
-                    Player::playback(self.events.clone(), self.tuned, Arc::clone(&self.speed), Arc::clone(&self.is_play));
+                    Player::playback(self.events.clone(), self.tuned, Arc::clone(&self.speed), Arc::clone(&self.is_play), Arc::clone(&self.pause));
                 }
             }
             if get_global_keystate(VKey::Shift) {
                 *is_play.lock().unwrap() = false;
             }
-            if *is_play.lock().unwrap() {
+            if get_global_keystate(VKey::P) {
+                if !*pause.lock().unwrap() {
+                    *pause.lock().unwrap() = true;
+                }
+            }
+            if *is_play.lock().unwrap() && !*pause.lock().unwrap() {
                 self.state = format!("正在播放中...");
             }
             if !*is_play.lock().unwrap() {
                 self.state = format!("已停止播放");
             }
+            if *pause.lock().unwrap() {
+                self.state = format!("已暂停播放");
+            }
             ui.separator();
-            ui.label("按下Enter键开始播放");
+            ui.label("按下Enter键开始播放 | 继续播放");
+            ui.label("按下P键暂停播放");
             ui.label("按下Shift键停止播放");
         });
     }
