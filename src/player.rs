@@ -68,9 +68,14 @@ impl Player {
                 if !*is_play.lock().unwrap() {
                     break;
                 }
-                while let true = *pause.lock().unwrap() {
-                    input_time = msg.delay;
-                    start_time = Local::now().timestamp_millis();
+                if *pause.lock().unwrap() {
+                    loop {
+                        if !*pause.lock().unwrap() {
+                            input_time = msg.delay;
+                            start_time = Local::now().timestamp_millis();
+                            break;
+                        }
+                    }
                 }
 
                 input_time += msg.delay / *speed.lock().unwrap();
