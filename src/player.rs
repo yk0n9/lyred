@@ -193,7 +193,7 @@ impl eframe::App for Player {
             if !*is_play.lock().unwrap() {
                 self.state = format!("已停止播放");
             }
-            if *pause.lock().unwrap() {
+            if *pause.lock().unwrap() && *is_play.lock().unwrap() {
                 self.state = format!("已暂停播放");
             }
             ui.separator();
