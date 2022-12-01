@@ -141,7 +141,7 @@ impl eframe::App for Player {
             ui.horizontal(|ui| {
                 ui.label("选择你的MIDI文件");
                 if (ui.button("打开")).clicked() {
-                    let mut dialog = FileDialog::open_file(self.opened_file.clone());
+                    let mut dialog = FileDialog::open_file(self.opened_file.clone()).filter("mid".into());
                     dialog.open();
                     self.open_file_dialog = Some(dialog);
                     *is_play.lock().unwrap() = false;

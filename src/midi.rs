@@ -94,7 +94,7 @@ pub fn tune(message: Vec<KeyEvent>) -> i32 {
 fn tune_up(message: Vec<KeyEvent>, hit_vec: &mut Vec<f32>, offset: i32) {
     let mut hit_count = 0.;
     let len = message.len() as f32;
-    for msg in &message {
+    for msg in message.iter() {
         let key = msg.press as i32 + offset;
         if MAP.contains(&key) {
             hit_count += 1.;
@@ -112,7 +112,7 @@ fn tune_up(message: Vec<KeyEvent>, hit_vec: &mut Vec<f32>, offset: i32) {
 fn tune_down(message: Vec<KeyEvent>, hit_vec: &mut Vec<f32>, offset: i32) {
     let mut hit_count = 0.;
     let len = message.len() as f32;
-    for msg in &message {
+    for msg in message.iter() {
         let key = msg.press as i32 + offset;
         if MAP.contains(&key) {
             hit_count += 1.;
