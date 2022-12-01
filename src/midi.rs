@@ -25,23 +25,23 @@ pub fn init(path: &str) -> Result<Vec<KeyEvent>> {
     let mut events = vec![];
     let mut result = vec![];
 
-    for track in midi.tracks {
+    midi.tracks.iter().for_each(|track| {
         let mut tick = 0.;
 
-        for event in track {
+        track.iter().for_each(|event| {
             tick += event.delta.as_int() as f64;
             events.push(Event {
                 event: event.kind,
                 tick,
             })
-        }
-    }
+        });
+    });
 
     events.sort_by_key(|e| e.tick as u64);
 
     let mut tick = 0.;
     let mut tempo = 500000.;
-    for event in events {
+    events.iter().for_each(|event| {
         let time: f64;
 
         if let TrackEventKind::Meta(MetaMessage::Tempo(t)) = event.event {
@@ -55,40 +55,10 @@ pub fn init(path: &str) -> Result<Vec<KeyEvent>> {
                 result.push(KeyEvent { press: key.as_int(), delay: time });
             }
         }
-    }
+    });
 
     Ok(result)
 }
-
-// pub fn playback(message: Vec<KeyEvent>, speed: f64, tuned: bool) {
-//     let mut click = Enigo::new();
-//
-//     let mut shift = 0;
-//
-//     if tuned {
-//         shift = tune(message.clone());
-//     }
-//
-//     let start_time = Local::now().timestamp_millis();
-//     let mut input_time = 0.;
-//     for msg in message.into_iter() {
-//         input_time += msg.delay / speed;
-//
-//         let playback_time = (Local::now().timestamp_millis() - start_time) as f64;
-//         let current_time = (input_time - playback_time) as u64;
-//         if current_time > 0 {
-//             sleep(Duration::from_millis(current_time));
-//         }
-//
-//         match c((msg.press as i32 + shift) as u8) {
-//             Some(key) => {
-//                 click.key_down(Key::Layout(key));
-//                 click.key_up(Key::Layout(key));
-//             }
-//             _ => {}
-//         }
-//     }
-// }
 
 pub fn tune(message: Vec<KeyEvent>) -> i32 {
     let mut up_hit = vec![];

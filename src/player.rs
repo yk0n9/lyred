@@ -64,7 +64,7 @@ impl Player {
 
             let mut start_time = Local::now().timestamp_millis();
             let mut input_time = 0.;
-            for msg in message.into_iter() {
+            for msg in message.iter() {
                 if !*is_play.lock().unwrap() {
                     break;
                 }
@@ -144,6 +144,8 @@ impl eframe::App for Player {
                     let mut dialog = FileDialog::open_file(self.opened_file.clone());
                     dialog.open();
                     self.open_file_dialog = Some(dialog);
+                    *is_play.lock().unwrap() = false;
+                    *pause.lock().unwrap() = false;
                 }
 
                 if let Some(dialog) = &mut self.open_file_dialog {

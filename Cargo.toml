@@ -18,9 +18,6 @@ eframe = "0.19"
 egui_file = "0.3"
 windows-hotkeys = "0.1"
 
-#[[bin]]
-#name = "demo"
-#path = "src/demo.rs"
 [target.'cfg(target_os="windows")'.build-dependencies]
 winres = "0.1"
 
