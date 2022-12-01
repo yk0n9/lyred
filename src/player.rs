@@ -65,9 +65,6 @@ impl Player {
             let mut start_time = Local::now().timestamp_millis();
             let mut input_time = 0.;
             for msg in message.iter() {
-                if !*is_play.lock().unwrap() {
-                    break;
-                }
                 if *pause.lock().unwrap() {
                     loop {
                         if !*pause.lock().unwrap() {
@@ -76,6 +73,10 @@ impl Player {
                             break;
                         }
                     }
+                }
+
+                if !*is_play.lock().unwrap() {
+                    break;
                 }
 
                 input_time += msg.delay / *speed.lock().unwrap();
@@ -183,6 +184,7 @@ impl eframe::App for Player {
             }
             if get_global_keystate(VKey::Shift) {
                 *is_play.lock().unwrap() = false;
+                *pause.lock().unwrap() = false;
             }
             if get_global_keystate(VKey::P) {
                 if !*pause.lock().unwrap() {
