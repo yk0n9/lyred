@@ -1,5 +1,5 @@
 [package]
-name = "rs-midi-player"
+name = "lyred"
 version = "0.1.0"
 edition = "2021"
 build = "build.rs"
@@ -22,5 +22,5 @@ windows-hotkeys = "0.1"
 winres = "0.1"
 
 [[bin]]
-name = "player"
-path = "src/player.rs"
+name = "lyred"
+path = "src/lyred.rs"

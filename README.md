@@ -1,4 +1,6 @@
-# rs-midi-player
+# Lyred
+
+### Lyred is a MIDI player built in Rust for Genshin
 
 todo:
 
@@ -8,4 +10,4 @@ todo:
 
 done
 
-Download release from ./target/release/player.exe
+Download release from ./target/release/lyred.exe
