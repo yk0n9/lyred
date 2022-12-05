@@ -1,3 +1,5 @@
+#![windows_subsystem = "windows"]
+
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
