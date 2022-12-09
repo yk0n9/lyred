@@ -154,6 +154,7 @@ impl eframe::App for Player {
                 if let Some(dialog) = &mut self.open_file_dialog {
                     if dialog.show(ctx).selected() {
                         if let Some(file) = dialog.path() {
+                            self.events = init(file.to_str().unwrap()).unwrap();
                             self.opened_file = Some(file);
                         }
                     }
@@ -161,7 +162,6 @@ impl eframe::App for Player {
             });
             if let Some(path) = &self.opened_file {
                 ui.label(&format!("你选择的是: {}", path.to_str().unwrap()));
-                self.events = init(path.to_str().unwrap()).unwrap();
             }
             ui.separator();
             ui.label(&format!("你的播放速度是: {}x", *speed.lock().unwrap()));
