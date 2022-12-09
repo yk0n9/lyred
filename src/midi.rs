@@ -25,35 +25,38 @@ pub fn init(path: &str) -> Result<Vec<KeyEvent>> {
     let mut events = vec![];
     let mut result = vec![];
 
-    midi.tracks.iter().for_each(|track| {
-        let mut tick = 0.;
+    midi.tracks.into_iter().for_each(|track| {
+        let mut tick = 0.0;
 
-        track.iter().for_each(|event| {
+        for event in track {
             tick += event.delta.as_int() as f64;
+
             events.push(Event {
                 event: event.kind,
                 tick,
-            })
-        });
+            });
+        }
     });
 
     events.sort_by_key(|e| e.tick as u64);
 
-    let mut tick = 0.;
-    let mut tempo = 500000.;
-    events.iter().for_each(|event| {
+    let mut tick = 0.0;
+    let mut tempo = 500000.0;
+    events.into_iter().for_each(|event| {
         let time: f64;
 
-        if let TrackEventKind::Meta(MetaMessage::Tempo(t)) = event.event {
-            tempo = t.as_int() as f64;
-        }
-
-        if let TrackEventKind::Midi { channel: _, message: MidiMessage::NoteOn { key, vel } } = event.event {
-            if vel > 0 {
-                time = (event.tick - tick) * (tempo / 1000. / resolution);
-                tick = event.tick;
-                result.push(KeyEvent { press: key.as_int(), delay: time });
+        match event.event {
+            TrackEventKind::Meta(MetaMessage::Tempo(t)) => {
+                tempo = t.as_int() as f64;
             }
+            TrackEventKind::Midi { channel: _, message: MidiMessage::NoteOn { key, vel } } => {
+                if vel > 0 {
+                    time = (event.tick - tick) * (tempo / 1000.0 / resolution);
+                    tick = event.tick;
+                    result.push(KeyEvent { press: key.as_int(), delay: time });
+                }
+            }
+            _ => {}
         }
     });
 
@@ -63,22 +66,22 @@ pub fn init(path: &str) -> Result<Vec<KeyEvent>> {
 pub fn tune(message: Vec<KeyEvent>) -> i32 {
     let mut up_hit = vec![];
     let mut down_hit = vec![];
-    tune_up(message.clone(), &mut up_hit, 0);
-    tune_down(message.clone(), &mut down_hit, 0);
-
-    let mut up_max = 0.;
-    let mut down_max = 0.;
+    let mut up_max = 0.0;
+    let mut down_max = 0.0;
     let mut up_shift = 0;
     let mut down_shift = 0;
-    for (i, x) in up_hit.iter().enumerate() {
-        if *x > up_max {
-            up_max = *x;
+
+    rayon::join(|| tune_up(message.clone(), &mut up_hit, 0), || tune_down(message.clone(), &mut down_hit, 0));
+
+    for (i, x) in up_hit.into_iter().enumerate() {
+        if x > up_max {
+            up_max = x;
             up_shift = i as i32;
         }
     }
-    for (i, x) in down_hit.iter().enumerate() {
-        if *x > down_max {
-            down_max = *x;
+    for (i, x) in down_hit.into_iter().enumerate() {
+        if x > down_max {
+            down_max = x;
             down_shift = i as i32;
         }
     }
@@ -92,12 +95,12 @@ pub fn tune(message: Vec<KeyEvent>) -> i32 {
 }
 
 fn tune_up(message: Vec<KeyEvent>, hit_vec: &mut Vec<f32>, offset: i32) {
-    let mut hit_count = 0.;
+    let mut hit_count = 0.0;
     let len = message.len() as f32;
     for msg in message.iter() {
         let key = msg.press as i32 + offset;
         if MAP.contains(&key) {
-            hit_count += 1.;
+            hit_count += 1.0;
         }
     }
     let hit = hit_count / len;
@@ -110,12 +113,12 @@ fn tune_up(message: Vec<KeyEvent>, hit_vec: &mut Vec<f32>, offset: i32) {
 }
 
 fn tune_down(message: Vec<KeyEvent>, hit_vec: &mut Vec<f32>, offset: i32) {
-    let mut hit_count = 0.;
+    let mut hit_count = 0.0;
     let len = message.len() as f32;
     for msg in message.iter() {
         let key = msg.press as i32 + offset;
         if MAP.contains(&key) {
-            hit_count += 1.;
+            hit_count += 1.0;
         }
     }
     let hit = hit_count / len;

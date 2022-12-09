@@ -22,7 +22,7 @@ fn main() {
     let options = NativeOptions {
         default_theme: Light,
         resizable: false,
-        initial_window_size: Some(Vec2::new(800., 600.)),
+        initial_window_size: Some(Vec2::new(800.0, 600.0)),
         ..NativeOptions::default()
     };
     eframe::run_native("Lyred", options, Box::new(|_| Box::new(Player::default())));
@@ -65,7 +65,7 @@ impl Player {
             }
 
             let mut start_time = Local::now().timestamp_millis();
-            let mut input_time = 0.;
+            let mut input_time = 0.0;
             for msg in message.iter() {
                 if *pause.lock().unwrap() {
                     loop {
