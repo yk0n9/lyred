@@ -108,7 +108,7 @@ impl eframe::App for Player {
         let mut fonts = egui::FontDefinitions::default();
         fonts.font_data.insert(
             "my_font".to_owned(),
-            egui::FontData::from_static(include_bytes!("simkai.ttf")),
+            egui::FontData::from_static(include_bytes!("msyhbd.ttc")),
         );
         fonts
             .families
