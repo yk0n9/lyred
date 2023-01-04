@@ -27,15 +27,15 @@ fn main() -> Result<()> {
         initial_window_size: Some(Vec2::new(800.0, 600.0)),
         ..NativeOptions::default()
     };
-    let bytes = include_bytes!("../resources/lyre.ico");
-    let image_buffer = image::load_from_memory(bytes).ok().unwrap();
-    let img = image_buffer.to_rgba8();
-    let size = img.dimensions();
-    let pixels = img.into_vec();
+    let icon_bytes = include_bytes!("../resources/lyre.ico");
+    let icon_buffer = image::load_from_memory(icon_bytes).ok().unwrap();
+    let icon = icon_buffer.to_rgba8();
+    let (icon_width, icon_height) = icon.dimensions();
+    let pixels = icon.into_vec();
     let icon_data = IconData {
         rgba: pixels,
-        width: size.0,
-        height: size.1,
+        width: icon_width,
+        height: icon_height,
     };
     options.icon_data = Some(icon_data);
     eframe::run_native("Lyred", options, Box::new(|_| Box::new(Player::default())));
