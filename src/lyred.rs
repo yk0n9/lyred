@@ -8,7 +8,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use chrono::Local;
 use eframe::egui::{Context, FontId, Slider, Vec2};
-use eframe::{egui, Frame, NativeOptions};
+use eframe::{egui, Frame, IconData, NativeOptions};
 use eframe::egui::FontFamily::Proportional;
 use eframe::egui::TextStyle::{Body, Heading, Small};
 use eframe::Theme::Light;
@@ -18,15 +18,29 @@ use egui::TextStyle::*;
 use egui_file::FileDialog;
 use windows_hotkeys::get_global_keystate;
 use windows_hotkeys::keys::VKey;
+use anyhow::Result;
 
-fn main() {
-    let options = NativeOptions {
+fn main() -> Result<()> {
+    let mut options = NativeOptions {
         default_theme: Light,
         resizable: false,
         initial_window_size: Some(Vec2::new(800.0, 600.0)),
         ..NativeOptions::default()
     };
+    let bytes = include_bytes!("../resources/lyre.ico");
+    let image_buffer = image::load_from_memory(bytes).ok().unwrap();
+    let img = image_buffer.to_rgba8();
+    let size = img.dimensions();
+    let pixels = img.into_vec();
+    let icon_data = IconData {
+        rgba: pixels,
+        width: size.0,
+        height: size.1,
+    };
+    options.icon_data = Some(icon_data);
     eframe::run_native("Lyred", options, Box::new(|_| Box::new(Player::default())));
+
+    Ok(())
 }
 
 pub struct Player {
@@ -109,7 +123,7 @@ impl eframe::App for Player {
         let mut fonts = egui::FontDefinitions::default();
         fonts.font_data.insert(
             "my_font".to_owned(),
-            egui::FontData::from_static(include_bytes!("msyhbd.ttc")),
+            egui::FontData::from_static(include_bytes!("../resources/msyhbd.ttc")),
         );
         fonts
             .families

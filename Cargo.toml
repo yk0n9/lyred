@@ -15,6 +15,7 @@ enigo = { git = "https://github.com/Ykong1337/enigo.git" }
 anyhow = "1"
 rayon = "1"
 
+image = "0.24"
 eframe = "0.20"
 egui_file = "0.5"
 windows-hotkeys = "0.1"
