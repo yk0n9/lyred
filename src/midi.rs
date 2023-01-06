@@ -1,6 +1,6 @@
-use std::fs::read;
-use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 use anyhow::Result;
+use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
+use std::fs::read;
 
 struct Event<'a> {
     event: TrackEventKind<'a>,
@@ -13,14 +13,19 @@ pub struct KeyEvent {
     pub delay: f64,
 }
 
-const MAP: [i32; 42] = [24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95];
+const MAP: [i32; 42] = [
+    24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64,
+    65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95,
+];
 
 pub fn init(path: &str) -> Result<Vec<KeyEvent>> {
     let file = read(path).unwrap();
     let midi = Smf::parse(&file).expect("Not a Midi File");
     let resolution = match midi.header.timing {
-        Timing::Metrical(resolution) => { resolution.as_int() as f64 }
-        _ => { unimplemented!() }
+        Timing::Metrical(resolution) => resolution.as_int() as f64,
+        _ => {
+            unimplemented!()
+        }
     };
     let mut events = vec![];
     let mut result = vec![];
@@ -49,11 +54,17 @@ pub fn init(path: &str) -> Result<Vec<KeyEvent>> {
             TrackEventKind::Meta(MetaMessage::Tempo(t)) => {
                 tempo = t.as_int() as f64;
             }
-            TrackEventKind::Midi { channel: _, message: MidiMessage::NoteOn { key, vel } } => {
+            TrackEventKind::Midi {
+                channel: _,
+                message: MidiMessage::NoteOn { key, vel },
+            } => {
                 if vel > 0 {
                     time = (event.tick - tick) * (tempo / 1000.0 / resolution);
                     tick = event.tick;
-                    result.push(KeyEvent { press: key.as_int(), delay: time });
+                    result.push(KeyEvent {
+                        press: key.as_int(),
+                        delay: time,
+                    });
                 }
             }
             _ => {}
@@ -71,7 +82,10 @@ pub fn tune(message: Vec<KeyEvent>) -> i32 {
     let mut up_shift = 0;
     let mut down_shift = 0;
 
-    rayon::join(|| tune_up(message.clone(), &mut up_hit, 0), || tune_down(message.clone(), &mut down_hit, 0));
+    rayon::join(
+        || tune_up(message.clone(), &mut up_hit, 0),
+        || tune_down(message.clone(), &mut down_hit, 0),
+    );
 
     for (i, x) in up_hit.into_iter().enumerate() {
         if x > up_max {
@@ -131,50 +145,49 @@ fn tune_down(message: Vec<KeyEvent>, hit_vec: &mut Vec<f32>, offset: i32) {
 }
 
 pub fn c(key: u8) -> Option<char> {
-    Some(
-        match key {
-            24 => 'z',
-            26 => 'x',
-            28 => 'c',
-            29 => 'v',
-            31 => 'b',
-            33 => 'n',
-            35 => 'm',
-            36 => 'z',
-            38 => 'x',
-            40 => 'c',
-            41 => 'v',
-            43 => 'b',
-            45 => 'n',
-            47 => 'm',
-            48 => 'z',
-            50 => 'x',
-            52 => 'c',
-            53 => 'v',
-            55 => 'b',
-            57 => 'n',
-            59 => 'm',
-            60 => 'a',
-            62 => 's',
-            64 => 'd',
-            65 => 'f',
-            67 => 'g',
-            69 => 'h',
-            71 => 'j',
-            72 => 'q',
-            74 => 'w',
-            76 => 'e',
-            77 => 'r',
-            79 => 't',
-            81 => 'y',
-            83 => 'u',
-            84 => 'q',
-            86 => 'w',
-            88 => 'e',
-            89 => 'r',
-            91 => 't',
-            93 => 'y',
-            95 => 'u',
-            _ => return None
-        })
+    Some(match key {
+        24 => 'z',
+        26 => 'x',
+        28 => 'c',
+        29 => 'v',
+        31 => 'b',
+        33 => 'n',
+        35 => 'm',
+        36 => 'z',
+        38 => 'x',
+        40 => 'c',
+        41 => 'v',
+        43 => 'b',
+        45 => 'n',
+        47 => 'm',
+        48 => 'z',
+        50 => 'x',
+        52 => 'c',
+        53 => 'v',
+        55 => 'b',
+        57 => 'n',
+        59 => 'm',
+        60 => 'a',
+        62 => 's',
+        64 => 'd',
+        65 => 'f',
+        67 => 'g',
+        69 => 'h',
+        71 => 'j',
+        72 => 'q',
+        74 => 'w',
+        76 => 'e',
+        77 => 'r',
+        79 => 't',
+        81 => 'y',
+        83 => 'u',
+        84 => 'q',
+        86 => 'w',
+        88 => 'e',
+        89 => 'r',
+        91 => 't',
+        93 => 'y',
+        95 => 'u',
+        _ => return None,
+    })
 }

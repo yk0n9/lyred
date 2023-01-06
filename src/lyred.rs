@@ -1,24 +1,24 @@
 #![windows_subsystem = "windows"]
 
+use anyhow::Result;
+use chrono::Local;
+use eframe::egui::FontFamily::Proportional;
+use eframe::egui::TextStyle::{Body, Heading, Small};
+use eframe::egui::{Context, FontId, Slider, Vec2};
+use eframe::Theme::Light;
+use eframe::{egui, Frame, IconData, NativeOptions};
+use egui::TextStyle::*;
+use egui_file::FileDialog;
+use enigo::{Enigo, Key, KeyboardControllable};
+use lyred::midi::{c, init, tune, KeyEvent};
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
-use chrono::Local;
-use eframe::egui::{Context, FontId, Slider, Vec2};
-use eframe::{egui, Frame, IconData, NativeOptions};
-use eframe::egui::FontFamily::Proportional;
-use eframe::egui::TextStyle::{Body, Heading, Small};
-use eframe::Theme::Light;
-use enigo::{Enigo, Key, KeyboardControllable};
-use lyred::midi::{c, init, KeyEvent, tune};
-use egui::TextStyle::*;
-use egui_file::FileDialog;
 use windows_hotkeys::get_global_keystate;
 use windows_hotkeys::keys::VKey;
-use anyhow::Result;
 
 fn main() -> Result<()> {
     let mut options = NativeOptions {
@@ -70,7 +70,13 @@ impl Default for Player {
 }
 
 impl Player {
-    pub fn playback(message: Vec<KeyEvent>, tuned: bool, speed: Arc<Mutex<f64>>, is_play: Arc<Mutex<bool>>, pause: Arc<Mutex<bool>>) {
+    pub fn playback(
+        message: Vec<KeyEvent>,
+        tuned: bool,
+        speed: Arc<Mutex<f64>>,
+        is_play: Arc<Mutex<bool>>,
+        pause: Arc<Mutex<bool>>,
+    ) {
         let _ = thread::spawn(move || {
             let mut click = Enigo::new();
             let mut shift = 0;
@@ -104,12 +110,9 @@ impl Player {
                     sleep(Duration::from_millis(current_time));
                 }
 
-                match c((msg.press as i32 + shift) as u8) {
-                    Some(key) => {
-                        click.key_down(Key::Layout(key));
-                        click.key_up(Key::Layout(key));
-                    }
-                    _ => {}
+                if let Some(key) = c((msg.press as i32 + shift) as u8) {
+                    click.key_down(Key::Layout(key));
+                    click.key_up(Key::Layout(key));
                 }
             }
             *is_play.lock().unwrap() = false;
@@ -146,7 +149,8 @@ impl eframe::App for Player {
             (Monospace, FontId::new(14.0, Proportional)),
             (Button, FontId::new(14.0, Proportional)),
             (Small, FontId::new(10.0, Proportional)),
-        ].into();
+        ]
+        .into();
 
         ctx.set_style(style);
 
@@ -199,7 +203,13 @@ impl eframe::App for Player {
                 *pause.lock().unwrap() = false;
                 if !*is_play.lock().unwrap() {
                     *is_play.lock().unwrap() = true;
-                    Player::playback(self.events.clone(), self.tuned, Arc::clone(&self.speed), Arc::clone(&self.is_play), Arc::clone(&self.pause));
+                    Player::playback(
+                        self.events.clone(),
+                        self.tuned,
+                        Arc::clone(&self.speed),
+                        Arc::clone(&self.is_play),
+                        Arc::clone(&self.pause),
+                    );
                 }
             }
             if get_global_keystate(VKey::Shift) {
