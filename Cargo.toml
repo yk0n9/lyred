@@ -27,7 +27,6 @@ winres = "0.1"
 opt-level = 'z'
 lto = true
 codegen-units = 1
-panic = 'abort'
 
 [[bin]]
 name = "lyred"
