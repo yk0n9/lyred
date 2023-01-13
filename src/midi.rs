@@ -1,6 +1,7 @@
 use anyhow::Result;
 use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 use std::fs::read;
+use std::path::Path;
 
 struct Event<'a> {
     event: TrackEventKind<'a>,
@@ -18,7 +19,7 @@ const MAP: [i32; 42] = [
     65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95,
 ];
 
-pub fn init(path: &str) -> Result<Vec<KeyEvent>> {
+pub fn init<P: AsRef<Path>>(path: P) -> Result<Vec<KeyEvent>> {
     let file = read(path).unwrap();
     let midi = Smf::parse(&file).expect("Not a Midi File");
     let resolution = match midi.header.timing {

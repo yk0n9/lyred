@@ -8,11 +8,9 @@ use eframe::egui::{Context, FontId, Slider, Vec2};
 use eframe::Theme::Light;
 use eframe::{egui, Frame, IconData, NativeOptions};
 use egui::TextStyle::*;
-use egui_file::FileDialog;
 use enigo::{Enigo, Key, KeyboardControllable};
 use lyred::midi::{c, init, tune, KeyEvent};
-use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::sleep;
@@ -50,7 +48,6 @@ pub struct Player {
     pub pause: Arc<Mutex<bool>>,
     pub state: String,
     pub opened_file: Option<PathBuf>,
-    pub open_file_dialog: Option<FileDialog>,
     pub events: Vec<KeyEvent>,
 }
 
@@ -63,7 +60,6 @@ impl Default for Player {
             pause: Arc::new(Mutex::new(false)),
             state: format!("已停止播放"),
             opened_file: None,
-            open_file_dialog: None,
             events: vec![],
         }
     }
@@ -150,7 +146,7 @@ impl eframe::App for Player {
             (Button, FontId::new(14.0, Proportional)),
             (Small, FontId::new(10.0, Proportional)),
         ]
-        .into();
+            .into();
 
         ctx.set_style(style);
 
@@ -163,23 +159,12 @@ impl eframe::App for Player {
             ui.horizontal(|ui| {
                 ui.label("选择你的MIDI文件");
                 if (ui.button("打开")).clicked() {
-                    let filter = Box::new(|path: &Path| -> bool {
-                        path.extension() == Some(OsStr::new("mid"))
-                    });
-                    let mut dialog = FileDialog::open_file(self.opened_file.clone()).filter(filter);
-                    dialog.open();
-                    self.open_file_dialog = Some(dialog);
+                    if let Some(file) = rfd::FileDialog::new().add_filter("mid", &["mid"]).pick_file() {
+                        self.events = init(file.clone()).unwrap();
+                        self.opened_file = Some(file);
+                    }
                     *is_play.lock().unwrap() = false;
                     *pause.lock().unwrap() = false;
-                }
-
-                if let Some(dialog) = &mut self.open_file_dialog {
-                    if dialog.show(ctx).selected() {
-                        if let Some(file) = dialog.path() {
-                            self.events = init(file.to_str().unwrap()).unwrap();
-                            self.opened_file = Some(file);
-                        }
-                    }
                 }
             });
             if let Some(path) = &self.opened_file {
