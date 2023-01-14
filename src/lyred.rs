@@ -47,8 +47,8 @@ pub struct Player {
     pub is_play: Arc<Mutex<bool>>,
     pub pause: Arc<Mutex<bool>>,
     pub state: String,
-    pub opened_file: Option<PathBuf>,
-    pub events: Vec<KeyEvent>,
+    pub opened_file: Arc<Mutex<Option<PathBuf>>>,
+    pub events: Arc<Mutex<Vec<KeyEvent>>>,
 }
 
 impl Default for Player {
@@ -59,15 +59,15 @@ impl Default for Player {
             is_play: Arc::new(Mutex::new(false)),
             pause: Arc::new(Mutex::new(false)),
             state: format!("已停止播放"),
-            opened_file: None,
-            events: vec![],
+            opened_file: Arc::new(Mutex::new(None)),
+            events: Arc::new(Mutex::new(vec![])),
         }
     }
 }
 
 impl Player {
     pub fn playback(
-        message: Vec<KeyEvent>,
+        message: Arc<Mutex<Vec<KeyEvent>>>,
         tuned: bool,
         speed: Arc<Mutex<f64>>,
         is_play: Arc<Mutex<bool>>,
@@ -83,7 +83,7 @@ impl Player {
 
             let mut start_time = Local::now().timestamp_millis();
             let mut input_time = 0.0;
-            for msg in message.iter() {
+            for msg in message.lock().unwrap().iter() {
                 if *pause.lock().unwrap() {
                     loop {
                         if !*pause.lock().unwrap() {
@@ -153,21 +153,21 @@ impl eframe::App for Player {
         let is_play = Arc::clone(&self.is_play);
         let speed = Arc::clone(&self.speed);
         let pause = Arc::clone(&self.pause);
+        let opened_file = Arc::clone(&self.opened_file);
+        let show_file = opened_file.clone();
+        let events = Arc::clone(&self.events);
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.label("Lyred by Ykong1337");
             ui.separator();
             ui.horizontal(|ui| {
                 ui.label("选择你的MIDI文件");
                 if (ui.button("打开")).clicked() {
-                    if let Some(file) = rfd::FileDialog::new().add_filter("mid", &["mid"]).pick_file() {
-                        self.events = init(file.clone()).unwrap();
-                        self.opened_file = Some(file);
-                    }
                     *is_play.lock().unwrap() = false;
                     *pause.lock().unwrap() = false;
+                    init(opened_file, events);
                 }
             });
-            if let Some(path) = &self.opened_file {
+            if let Some(path) = show_file.lock().unwrap().clone() {
                 ui.label(&format!("你选择的是: {}", path.to_str().unwrap()));
             }
             ui.separator();
@@ -189,7 +189,7 @@ impl eframe::App for Player {
                 if !*is_play.lock().unwrap() {
                     *is_play.lock().unwrap() = true;
                     Player::playback(
-                        self.events.clone(),
+                        Arc::clone(&self.events),
                         self.tuned,
                         Arc::clone(&self.speed),
                         Arc::clone(&self.is_play),

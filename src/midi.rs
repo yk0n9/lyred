@@ -1,7 +1,8 @@
-use anyhow::Result;
 use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 use std::fs::read;
-use std::path::Path;
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 struct Event<'a> {
     event: TrackEventKind<'a>,
@@ -19,63 +20,72 @@ const MAP: [i32; 42] = [
     65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95,
 ];
 
-pub fn init<P: AsRef<Path>>(path: P) -> Result<Vec<KeyEvent>> {
-    let file = read(path).unwrap();
-    let midi = Smf::parse(&file).expect("Not a Midi File");
-    let resolution = match midi.header.timing {
-        Timing::Metrical(resolution) => resolution.as_int() as f64,
-        _ => {
-            unimplemented!()
+pub fn init(opened_file: Arc<Mutex<Option<PathBuf>>>, key_events: Arc<Mutex<Vec<KeyEvent>>>) {
+    let _ = thread::spawn(move || {
+        let mut path = PathBuf::new();
+        if let Some(file) = rfd::FileDialog::new()
+            .add_filter("mid", &["mid"])
+            .pick_file()
+        {
+            path = file.clone();
+            *opened_file.lock().unwrap() = Some(file);
         }
-    };
-    let mut events = vec![];
-    let mut result = vec![];
+        let file = read(path).unwrap();
+        let midi = Smf::parse(&file).expect("Not a Midi File");
+        let resolution = match midi.header.timing {
+            Timing::Metrical(resolution) => resolution.as_int() as f64,
+            _ => {
+                unimplemented!()
+            }
+        };
+        let mut events = vec![];
+        let mut result = vec![];
 
-    midi.tracks.into_iter().for_each(|track| {
+        midi.tracks.into_iter().for_each(|track| {
+            let mut tick = 0.0;
+
+            for event in track {
+                tick += event.delta.as_int() as f64;
+
+                events.push(Event {
+                    event: event.kind,
+                    tick,
+                });
+            }
+        });
+
+        events.sort_by_key(|e| e.tick as u64);
+
         let mut tick = 0.0;
+        let mut tempo = 500000.0;
+        events.into_iter().for_each(|event| {
+            let time: f64;
 
-        for event in track {
-            tick += event.delta.as_int() as f64;
-
-            events.push(Event {
-                event: event.kind,
-                tick,
-            });
-        }
-    });
-
-    events.sort_by_key(|e| e.tick as u64);
-
-    let mut tick = 0.0;
-    let mut tempo = 500000.0;
-    events.into_iter().for_each(|event| {
-        let time: f64;
-
-        match event.event {
-            TrackEventKind::Meta(MetaMessage::Tempo(t)) => {
-                tempo = t.as_int() as f64;
-            }
-            TrackEventKind::Midi {
-                channel: _,
-                message: MidiMessage::NoteOn { key, vel },
-            } => {
-                if vel > 0 {
-                    time = (event.tick - tick) * (tempo / 1000.0 / resolution);
-                    tick = event.tick;
-                    result.push(KeyEvent {
-                        press: key.as_int(),
-                        delay: time,
-                    });
+            match event.event {
+                TrackEventKind::Meta(MetaMessage::Tempo(t)) => {
+                    tempo = t.as_int() as f64;
                 }
+                TrackEventKind::Midi {
+                    channel: _,
+                    message: MidiMessage::NoteOn { key, vel },
+                } => {
+                    if vel > 0 {
+                        time = (event.tick - tick) * (tempo / 1000.0 / resolution);
+                        tick = event.tick;
+                        result.push(KeyEvent {
+                            press: key.as_int(),
+                            delay: time,
+                        });
+                    }
+                }
+                _ => {}
             }
-            _ => {}
-        }
+        });
+        *key_events.lock().unwrap() = result;
     });
-
-    Ok(result)
 }
 
-pub fn tune(message: Vec<KeyEvent>) -> i32 {
+pub fn tune(message: Arc<Mutex<Vec<KeyEvent>>>) -> i32 {
     let mut up_hit = vec![];
     let mut down_hit = vec![];
     let mut up_max = 0.0;
@@ -109,10 +119,10 @@ pub fn tune(message: Vec<KeyEvent>) -> i32 {
     -down_shift
 }
 
-fn tune_up(message: Vec<KeyEvent>, hit_vec: &mut Vec<f32>, offset: i32) {
+fn tune_up(message: Arc<Mutex<Vec<KeyEvent>>>, hit_vec: &mut Vec<f32>, offset: i32) {
     let mut hit_count = 0.0;
-    let len = message.len() as f32;
-    for msg in message.iter() {
+    let len = message.lock().unwrap().len() as f32;
+    for msg in message.lock().unwrap().iter() {
         let key = msg.press as i32 + offset;
         if MAP.contains(&key) {
             hit_count += 1.0;
@@ -127,10 +137,10 @@ fn tune_up(message: Vec<KeyEvent>, hit_vec: &mut Vec<f32>, offset: i32) {
     tune_up(message, hit_vec, offset + 1);
 }
 
-fn tune_down(message: Vec<KeyEvent>, hit_vec: &mut Vec<f32>, offset: i32) {
+fn tune_down(message: Arc<Mutex<Vec<KeyEvent>>>, hit_vec: &mut Vec<f32>, offset: i32) {
     let mut hit_count = 0.0;
-    let len = message.len() as f32;
-    for msg in message.iter() {
+    let len = message.lock().unwrap().len() as f32;
+    for msg in message.lock().unwrap().iter() {
         let key = msg.press as i32 + offset;
         if MAP.contains(&key) {
             hit_count += 1.0;
