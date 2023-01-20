@@ -182,7 +182,7 @@ impl eframe::App for Player {
             ui.label("选择你的模式");
             ui.horizontal(|ui| {
                 ui.radio_value(&mut self.mode, Mode::GenShin, "GenShin");
-                ui.radio_value(&mut self.mode, Mode::VRChat, "VRChat");
+                ui.radio_value(&mut self.mode, Mode::VRChat, "VRChat中文吧");
             });
             ui.separator();
             ui.label(&format!("你的播放速度是: {}x", *speed.lock().unwrap()));
@@ -198,7 +198,7 @@ impl eframe::App for Player {
             ui.checkbox(&mut self.tuned, "开启自动调音");
             ui.separator();
             ui.label(&self.state);
-            if get_global_keystate(VKey::Return) {
+            if get_global_keystate(VKey::Space) {
                 *pause.lock().unwrap() = false;
                 if !*is_play.lock().unwrap() {
                     *is_play.lock().unwrap() = true;
@@ -231,7 +231,7 @@ impl eframe::App for Player {
                 self.state = format!("已暂停播放");
             }
             ui.separator();
-            ui.label("按下Enter键开始播放 | 继续播放");
+            ui.label("按下Space键开始播放 | 继续播放");
             ui.label("按下Backspace键暂停播放");
             ui.label("按下Shift键停止播放");
         });

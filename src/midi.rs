@@ -30,7 +30,7 @@ pub fn init(opened_file: Arc<Mutex<Option<PathBuf>>>, key_events: Arc<Mutex<Vec<
     let _ = thread::spawn(move || {
         let mut path = PathBuf::new();
         if let Some(file) = rfd::FileDialog::new()
-            .add_filter("mid", &["mid"])
+            .add_filter("MIDI File", &["mid"])
             .pick_file()
         {
             path = file.clone();
@@ -40,9 +40,7 @@ pub fn init(opened_file: Arc<Mutex<Option<PathBuf>>>, key_events: Arc<Mutex<Vec<
         let midi = Smf::parse(&file).expect("Not a Midi File");
         let resolution = match midi.header.timing {
             Timing::Metrical(resolution) => resolution.as_int() as f64,
-            _ => {
-                unimplemented!()
-            }
+            _ => unimplemented!()
         };
         let mut events = vec![];
         let mut result = vec![];
@@ -119,10 +117,8 @@ pub fn tune(message: Arc<Mutex<Vec<KeyEvent>>>) -> i32 {
     }
 
     if up_shift > down_shift {
-        println!("Hit: {}", up_max);
         return up_shift;
     }
-    println!("Hit: {}", down_max);
     -down_shift
 }
 
