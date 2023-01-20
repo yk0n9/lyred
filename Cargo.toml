@@ -23,11 +23,6 @@ windows-hotkeys = "0.1"
 [target.'cfg(target_os="windows")'.build-dependencies]
 winres = "0.1"
 
-[profile.release]
-opt-level = 'z'
-lto = true
-codegen-units = 1
-
 [[bin]]
 name = "lyred"
 path = "src/lyred.rs"

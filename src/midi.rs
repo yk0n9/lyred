@@ -4,6 +4,12 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum Mode {
+    GenShin,
+    VRChat,
+}
+
 struct Event<'a> {
     event: TrackEventKind<'a>,
     tick: f64,
@@ -86,6 +92,7 @@ pub fn init(opened_file: Arc<Mutex<Option<PathBuf>>>, key_events: Arc<Mutex<Vec<
 }
 
 pub fn tune(message: Arc<Mutex<Vec<KeyEvent>>>) -> i32 {
+    let len = message.lock().unwrap().len() as f32;
     let mut up_hit = vec![];
     let mut down_hit = vec![];
     let mut up_max = 0.0;
@@ -94,8 +101,8 @@ pub fn tune(message: Arc<Mutex<Vec<KeyEvent>>>) -> i32 {
     let mut down_shift = 0;
 
     rayon::join(
-        || tune_up(message.clone(), &mut up_hit, 0),
-        || tune_down(message.clone(), &mut down_hit, 0),
+        || tune_offset(message.clone(), len, &mut up_hit, 0, true),
+        || tune_offset(message.clone(), len, &mut down_hit, 0, false),
     );
 
     for (i, x) in up_hit.into_iter().enumerate() {
@@ -119,9 +126,8 @@ pub fn tune(message: Arc<Mutex<Vec<KeyEvent>>>) -> i32 {
     -down_shift
 }
 
-fn tune_up(message: Arc<Mutex<Vec<KeyEvent>>>, hit_vec: &mut Vec<f32>, offset: i32) {
+fn tune_offset(message: Arc<Mutex<Vec<KeyEvent>>>, len: f32, hit_vec: &mut Vec<f32>, offset: i32, direction: bool) {
     let mut hit_count = 0.0;
-    let len = message.lock().unwrap().len() as f32;
     for msg in message.lock().unwrap().iter() {
         let key = msg.press as i32 + offset;
         if MAP.contains(&key) {
@@ -130,75 +136,20 @@ fn tune_up(message: Arc<Mutex<Vec<KeyEvent>>>, hit_vec: &mut Vec<f32>, offset: i
     }
     let hit = hit_count / len;
     hit_vec.push(hit);
-
-    if offset > 21 {
-        return;
-    }
-    tune_up(message, hit_vec, offset + 1);
-}
-
-fn tune_down(message: Arc<Mutex<Vec<KeyEvent>>>, hit_vec: &mut Vec<f32>, offset: i32) {
-    let mut hit_count = 0.0;
-    let len = message.lock().unwrap().len() as f32;
-    for msg in message.lock().unwrap().iter() {
-        let key = msg.press as i32 + offset;
-        if MAP.contains(&key) {
-            hit_count += 1.0;
+    match direction {
+        true => {
+            if offset > 21 {
+                return;
+            }
+            tune_offset(message, len, hit_vec, offset + 1, true);
+        }
+        _ => {
+            if offset < -21 {
+                return;
+            }
+            tune_offset(message, len, hit_vec, offset - 1, false);
         }
     }
-    let hit = hit_count / len;
-    hit_vec.push(hit);
-
-    if offset < -21 {
-        return;
-    }
-    tune_down(message, hit_vec, offset - 1);
 }
 
-pub fn c(key: u8) -> Option<char> {
-    Some(match key {
-        24 => 'z',
-        26 => 'x',
-        28 => 'c',
-        29 => 'v',
-        31 => 'b',
-        33 => 'n',
-        35 => 'm',
-        36 => 'z',
-        38 => 'x',
-        40 => 'c',
-        41 => 'v',
-        43 => 'b',
-        45 => 'n',
-        47 => 'm',
-        48 => 'z',
-        50 => 'x',
-        52 => 'c',
-        53 => 'v',
-        55 => 'b',
-        57 => 'n',
-        59 => 'm',
-        60 => 'a',
-        62 => 's',
-        64 => 'd',
-        65 => 'f',
-        67 => 'g',
-        69 => 'h',
-        71 => 'j',
-        72 => 'q',
-        74 => 'w',
-        76 => 'e',
-        77 => 'r',
-        79 => 't',
-        81 => 'y',
-        83 => 'u',
-        84 => 'q',
-        86 => 'w',
-        88 => 'e',
-        89 => 'r',
-        91 => 't',
-        93 => 'y',
-        95 => 'u',
-        _ => return None,
-    })
-}
+

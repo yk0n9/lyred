@@ -8,8 +8,8 @@ use eframe::egui::{Context, FontId, Slider, Vec2};
 use eframe::Theme::Light;
 use eframe::{egui, Frame, IconData, NativeOptions};
 use egui::TextStyle::*;
-use enigo::{Enigo, Key, KeyboardControllable};
-use lyred::midi::{c, init, tune, KeyEvent};
+use enigo::{Enigo, KeyboardControllable};
+use lyred::midi::{init, tune, KeyEvent, Mode};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -17,6 +17,7 @@ use std::thread::sleep;
 use std::time::Duration;
 use windows_hotkeys::get_global_keystate;
 use windows_hotkeys::keys::VKey;
+use lyred::maps::{GEN_SHIN, VR_CHAT};
 
 fn main() -> Result<()> {
     let mut options = NativeOptions {
@@ -49,6 +50,7 @@ pub struct Player {
     pub state: String,
     pub opened_file: Arc<Mutex<Option<PathBuf>>>,
     pub events: Arc<Mutex<Vec<KeyEvent>>>,
+    pub mode: Mode,
 }
 
 impl Default for Player {
@@ -61,6 +63,7 @@ impl Default for Player {
             state: format!("已停止播放"),
             opened_file: Arc::new(Mutex::new(None)),
             events: Arc::new(Mutex::new(vec![])),
+            mode: Mode::GenShin,
         }
     }
 }
@@ -72,10 +75,15 @@ impl Player {
         speed: Arc<Mutex<f64>>,
         is_play: Arc<Mutex<bool>>,
         pause: Arc<Mutex<bool>>,
+        mode: Mode,
     ) {
         let _ = thread::spawn(move || {
             let mut click = Enigo::new();
             let mut shift = 0;
+            let mode = match mode {
+                Mode::GenShin => GEN_SHIN,
+                Mode::VRChat => VR_CHAT
+            };
 
             if tuned {
                 shift = tune(message.clone());
@@ -106,9 +114,9 @@ impl Player {
                     sleep(Duration::from_millis(current_time));
                 }
 
-                if let Some(key) = c((msg.press as i32 + shift) as u8) {
-                    click.key_down(Key::Layout(key));
-                    click.key_up(Key::Layout(key));
+                if let Some(key) = mode((msg.press as i32 + shift) as u8) {
+                    click.key_down(key);
+                    click.key_up(key);
                 }
             }
             *is_play.lock().unwrap() = false;
@@ -171,6 +179,12 @@ impl eframe::App for Player {
                 ui.label(&format!("你选择的是: {}", path.to_str().unwrap()));
             }
             ui.separator();
+            ui.label("选择你的模式");
+            ui.horizontal(|ui| {
+                ui.radio_value(&mut self.mode, Mode::GenShin, "GenShin");
+                ui.radio_value(&mut self.mode, Mode::VRChat, "VRChat");
+            });
+            ui.separator();
             ui.label(&format!("你的播放速度是: {}x", *speed.lock().unwrap()));
             ui.add(Slider::new(&mut *speed.lock().unwrap(), 0.1..=5.0).text("速度"));
             if ui.button("- 0.1x").clicked() {
@@ -194,6 +208,7 @@ impl eframe::App for Player {
                         Arc::clone(&self.speed),
                         Arc::clone(&self.is_play),
                         Arc::clone(&self.pause),
+                        self.mode.clone(),
                     );
                 }
             }
@@ -201,7 +216,7 @@ impl eframe::App for Player {
                 *is_play.lock().unwrap() = false;
                 *pause.lock().unwrap() = false;
             }
-            if get_global_keystate(VKey::P) {
+            if get_global_keystate(VKey::Back) {
                 if !*pause.lock().unwrap() {
                     *pause.lock().unwrap() = true;
                 }
@@ -217,7 +232,7 @@ impl eframe::App for Player {
             }
             ui.separator();
             ui.label("按下Enter键开始播放 | 继续播放");
-            ui.label("按下P键暂停播放");
+            ui.label("按下Backspace键暂停播放");
             ui.label("按下Shift键停止播放");
         });
     }
