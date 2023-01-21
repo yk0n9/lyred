@@ -1,15 +1,15 @@
 #![windows_subsystem = "windows"]
 
 use anyhow::Result;
-use eframe::egui::FontFamily::Proportional;
 use eframe::egui::TextStyle::{Body, Heading, Small};
-use eframe::egui::{Context, FontId, Slider, Vec2};
+use eframe::egui::{Context, FontData, FontFamily, FontId, Slider, Vec2};
 use eframe::Theme::Light;
 use eframe::{egui, Frame, IconData, NativeOptions};
 use egui::TextStyle::*;
 use lyred::midi::{init, KeyEvent, Mode, playback};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+use eframe::egui::FontFamily::Proportional;
 use windows_hotkeys::get_global_keystate;
 use windows_hotkeys::keys::VKey;
 
@@ -66,19 +66,10 @@ impl eframe::App for Player {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         ctx.request_repaint();
         let mut fonts = egui::FontDefinitions::default();
-        fonts.font_data.insert(
-            "font".to_owned(),
-            egui::FontData::from_static(include_bytes!("../resources/msyhbd.ttc")),
-        );
-        fonts
-            .families
-            .entry(Proportional)
-            .or_default()
+        fonts.font_data.insert("font".to_owned(), FontData::from_static(include_bytes!("../resources/msyhbd.ttc"))); // .ttf and .otf supported
+        fonts.families.get_mut(&Proportional).unwrap()
             .insert(0, "font".to_owned());
-        fonts
-            .families
-            .entry(egui::FontFamily::Monospace)
-            .or_default()
+        fonts.families.get_mut(&FontFamily::Monospace).unwrap()
             .push("font".to_owned());
         ctx.set_fonts(fonts);
         let mut style = (*ctx.style()).clone();
