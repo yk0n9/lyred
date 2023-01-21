@@ -8,7 +8,7 @@ use eframe::egui::{Context, FontId, Slider, Vec2};
 use eframe::Theme::Light;
 use eframe::{egui, Frame, IconData, NativeOptions};
 use egui::TextStyle::*;
-use enigo::{Enigo, KeyboardControllable};
+use enigo::Enigo;
 use lyred::midi::{init, tune, KeyEvent, Mode};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -114,10 +114,7 @@ impl Player {
                     sleep(Duration::from_millis(current_time));
                 }
 
-                if let Some(key) = mode((msg.press as i32 + shift) as u8) {
-                    click.key_down(key);
-                    click.key_up(key);
-                }
+                mode(&mut click, (msg.press as i32 + shift) as u8);
             }
             *is_play.lock().unwrap() = false;
         });
