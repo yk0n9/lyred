@@ -186,10 +186,6 @@ pub fn playback(
                 }
             }
 
-            if !*is_play.lock().unwrap() {
-                break;
-            }
-
             input_time += msg.delay / *speed.lock().unwrap();
 
             let playback_time = (Local::now().timestamp_millis() - start_time) as f64;
@@ -198,9 +194,11 @@ pub fn playback(
                 sleep(Duration::from_millis(current_time));
             }
 
-            send(&mut click, (msg.press as i32 + shift) as u8);
+            match *is_play.lock().unwrap() {
+                true => send(&mut click, (msg.press as i32 + shift) as u8),
+                false => break
+            }
         }
-        *is_play.lock().unwrap() = false;
     });
 }
 

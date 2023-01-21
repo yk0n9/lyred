@@ -74,12 +74,12 @@ impl eframe::App for Player {
             .families
             .entry(Proportional)
             .or_default()
-            .insert(0, "my_font".to_owned());
+            .insert(0, "font".to_owned());
         fonts
             .families
             .entry(egui::FontFamily::Monospace)
             .or_default()
-            .push("my_font".to_owned());
+            .push("font".to_owned());
         ctx.set_fonts(fonts);
         let mut style = (*ctx.style()).clone();
 
@@ -120,7 +120,7 @@ impl eframe::App for Player {
             ui.label("选择你的模式");
             ui.horizontal(|ui| {
                 ui.radio_value(&mut self.mode, Mode::GenShin, "GenShin");
-                ui.radio_value(&mut self.mode, Mode::VRChat, "VRChat中文吧");
+                ui.radio_value(&mut self.mode, Mode::VRChat, "VRChat-中文吧");
             });
             ui.separator();
             ui.label(&format!("你的播放速度是: {}x", *speed.lock().unwrap()));
@@ -150,7 +150,7 @@ impl eframe::App for Player {
                     );
                 }
             }
-            if get_global_keystate(VKey::Shift) {
+            if get_global_keystate(VKey::Control) {
                 *is_play.lock().unwrap() = false;
                 *pause.lock().unwrap() = false;
             }
@@ -171,7 +171,7 @@ impl eframe::App for Player {
             ui.separator();
             ui.label("按下Space键开始播放 | 继续播放");
             ui.label("按下Backspace键暂停播放");
-            ui.label("按下Shift键停止播放");
+            ui.label("按下Ctrl键停止播放");
         });
     }
 }
