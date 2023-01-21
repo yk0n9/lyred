@@ -199,5 +199,6 @@ pub fn playback(
                 false => break
             }
         }
+        *is_play.lock().unwrap() = false;
     });
 }
