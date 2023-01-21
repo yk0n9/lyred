@@ -1,13 +1,16 @@
 # Lyred
 
-### Lyred is a MIDI player built in Rust for Genshin
+#### Lyred is a MIDI player in various games
 
-todo:
+# Features
 
-- ~~GUI interface~~
-- ~~auto tune~~
-- ~~in parallel with threads~~
+- User graphical interface
+- Auto tuning
+- Thread operations
+- Multi-mapping
 
-done
+Currently supported mappings:**Genshin**, **VRChat**
 
-Download release from ./target/release/lyred.exe
+# Getting Started
+
+Download the distribution from the "./target/release/"
