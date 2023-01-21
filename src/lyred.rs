@@ -67,7 +67,7 @@ impl eframe::App for Player {
         ctx.request_repaint();
         let mut fonts = egui::FontDefinitions::default();
         fonts.font_data.insert(
-            "my_font".to_owned(),
+            "font".to_owned(),
             egui::FontData::from_static(include_bytes!("../resources/msyhbd.ttc")),
         );
         fonts
