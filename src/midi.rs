@@ -164,7 +164,7 @@ pub fn playback(
     let _ = thread::spawn(move || {
         let mut click = Enigo::new();
         let mut shift = 0;
-        let mode = match mode {
+        let send = match mode {
             Mode::GenShin => GEN_SHIN,
             Mode::VRChat => VR_CHAT
         };
@@ -198,7 +198,7 @@ pub fn playback(
                 sleep(Duration::from_millis(current_time));
             }
 
-            mode(&mut click, (msg.press as i32 + shift) as u8);
+            send(&mut click, (msg.press as i32 + shift) as u8);
         }
         *is_play.lock().unwrap() = false;
     });
