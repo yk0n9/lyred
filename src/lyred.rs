@@ -1,23 +1,17 @@
 #![windows_subsystem = "windows"]
 
 use anyhow::Result;
-use chrono::Local;
 use eframe::egui::FontFamily::Proportional;
 use eframe::egui::TextStyle::{Body, Heading, Small};
 use eframe::egui::{Context, FontId, Slider, Vec2};
 use eframe::Theme::Light;
 use eframe::{egui, Frame, IconData, NativeOptions};
 use egui::TextStyle::*;
-use enigo::Enigo;
-use lyred::midi::{init, tune, KeyEvent, Mode};
+use lyred::midi::{init, KeyEvent, Mode, playback};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use std::thread;
-use std::thread::sleep;
-use std::time::Duration;
 use windows_hotkeys::get_global_keystate;
 use windows_hotkeys::keys::VKey;
-use lyred::maps::{GEN_SHIN, VR_CHAT};
 
 fn main() -> Result<()> {
     let mut options = NativeOptions {
@@ -65,59 +59,6 @@ impl Default for Player {
             events: Arc::new(Mutex::new(vec![])),
             mode: Mode::GenShin,
         }
-    }
-}
-
-impl Player {
-    pub fn playback(
-        message: Arc<Mutex<Vec<KeyEvent>>>,
-        tuned: bool,
-        speed: Arc<Mutex<f64>>,
-        is_play: Arc<Mutex<bool>>,
-        pause: Arc<Mutex<bool>>,
-        mode: Mode,
-    ) {
-        let _ = thread::spawn(move || {
-            let mut click = Enigo::new();
-            let mut shift = 0;
-            let mode = match mode {
-                Mode::GenShin => GEN_SHIN,
-                Mode::VRChat => VR_CHAT
-            };
-
-            if tuned {
-                shift = tune(message.clone());
-            }
-
-            let mut start_time = Local::now().timestamp_millis();
-            let mut input_time = 0.0;
-            for msg in message.lock().unwrap().iter() {
-                if *pause.lock().unwrap() {
-                    loop {
-                        if !*pause.lock().unwrap() {
-                            input_time = msg.delay;
-                            start_time = Local::now().timestamp_millis();
-                            break;
-                        }
-                    }
-                }
-
-                if !*is_play.lock().unwrap() {
-                    break;
-                }
-
-                input_time += msg.delay / *speed.lock().unwrap();
-
-                let playback_time = (Local::now().timestamp_millis() - start_time) as f64;
-                let current_time = (input_time - playback_time) as u64;
-                if current_time > 0 {
-                    sleep(Duration::from_millis(current_time));
-                }
-
-                mode(&mut click, (msg.press as i32 + shift) as u8);
-            }
-            *is_play.lock().unwrap() = false;
-        });
     }
 }
 
@@ -199,7 +140,7 @@ impl eframe::App for Player {
                 *pause.lock().unwrap() = false;
                 if !*is_play.lock().unwrap() {
                     *is_play.lock().unwrap() = true;
-                    Player::playback(
+                    playback(
                         Arc::clone(&self.events),
                         self.tuned,
                         Arc::clone(&self.speed),
