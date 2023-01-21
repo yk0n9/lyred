@@ -4,7 +4,7 @@
 
 # Features
 
-- User graphical interface
+- Graphical User Interface
 - Auto tuning
 - Thread operations
 - Multi-mapping
