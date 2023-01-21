@@ -9,7 +9,7 @@
 - Thread operations
 - Multi-mapping
 
-Currently supported mappings:**Genshin**, **VRChat**
+Currently supported mappings: **Genshin**, **VRChat**
 
 # Getting Started
 
