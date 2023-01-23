@@ -1,12 +1,14 @@
-use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 use std::fs::read;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
+
 use chrono::Local;
 use enigo::Enigo;
+use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
+
 use crate::maps::{GEN_SHIN, VR_CHAT};
 
 #[derive(Debug, Clone, PartialEq)]

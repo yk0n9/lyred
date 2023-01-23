@@ -1,17 +1,19 @@
 #![windows_subsystem = "windows"]
 
-use anyhow::Result;
-use eframe::egui::TextStyle::{Body, Heading, Small};
-use eframe::egui::{Context, FontData, FontFamily, FontId, Slider, Vec2};
-use eframe::Theme::Light;
-use eframe::{egui, Frame, IconData, NativeOptions};
-use egui::TextStyle::*;
-use lyred::midi::{init, KeyEvent, Mode, playback};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
+
+use anyhow::Result;
+use eframe::{egui, Frame, IconData, NativeOptions};
+use eframe::egui::{Context, FontData, FontFamily, FontId, Slider, Vec2};
 use eframe::egui::FontFamily::Proportional;
+use eframe::egui::TextStyle::{Body, Heading, Small};
+use eframe::Theme::Light;
+use egui::TextStyle::*;
 use windows_hotkeys::get_global_keystate;
 use windows_hotkeys::keys::VKey;
+
+use lyred::midi::{init, KeyEvent, Mode, playback};
 
 fn main() -> Result<()> {
     let mut options = NativeOptions {

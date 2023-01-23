@@ -1,5 +1,6 @@
 use enigo::Enigo;
 use enigo::Key::{Layout, Raw};
+
 use crate::press;
 
 pub const GEN_SHIN: fn(&mut Enigo, u8) = |click, key| {
