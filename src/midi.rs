@@ -47,7 +47,7 @@ pub fn init(opened_file: Arc<Mutex<Option<PathBuf>>>, key_events: Arc<Mutex<Vec<
         let midi = Smf::parse(&file).expect("Not a Midi File");
         let resolution = match midi.header.timing {
             Timing::Metrical(resolution) => resolution.as_int() as f64,
-            _ => unimplemented!()
+            _ => unimplemented!(),
         };
         let mut events = vec![];
         let mut result = vec![];
@@ -129,7 +129,13 @@ pub fn tune(message: Arc<Mutex<Vec<KeyEvent>>>) -> i32 {
     -down_shift
 }
 
-fn tune_offset(message: Arc<Mutex<Vec<KeyEvent>>>, len: f32, hit_vec: &mut Vec<f32>, offset: i32, direction: bool) {
+fn tune_offset(
+    message: Arc<Mutex<Vec<KeyEvent>>>,
+    len: f32,
+    hit_vec: &mut Vec<f32>,
+    offset: i32,
+    direction: bool,
+) {
     let mut hit_count = 0.0;
     for msg in message.lock().unwrap().iter() {
         let key = msg.press as i32 + offset;
@@ -168,7 +174,7 @@ pub fn playback(
         let mut shift = 0;
         let send = match mode {
             Mode::GenShin => GEN_SHIN,
-            Mode::VRChat => VR_CHAT
+            Mode::VRChat => VR_CHAT,
         };
 
         if tuned {
@@ -198,7 +204,7 @@ pub fn playback(
 
             match *is_play.lock().unwrap() {
                 true => send(&mut click, (msg.press as i32 + shift) as u8),
-                false => break
+                false => break,
             }
         }
         *is_play.lock().unwrap() = false;

@@ -4,16 +4,16 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
-use eframe::{egui, Frame, IconData, NativeOptions};
-use eframe::egui::{Context, FontData, FontFamily, FontId, Slider, Vec2};
 use eframe::egui::FontFamily::Proportional;
 use eframe::egui::TextStyle::{Body, Heading, Small};
+use eframe::egui::{Context, FontData, FontFamily, FontId, Slider, Vec2};
 use eframe::Theme::Light;
+use eframe::{egui, Frame, IconData, NativeOptions};
 use egui::TextStyle::*;
 use windows_hotkeys::get_global_keystate;
 use windows_hotkeys::keys::VKey;
 
-use lyred::midi::{init, KeyEvent, Mode, playback};
+use lyred::midi::{init, playback, KeyEvent, Mode};
 
 fn main() -> Result<()> {
     let mut options = NativeOptions {
@@ -68,10 +68,19 @@ impl eframe::App for Player {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         ctx.request_repaint();
         let mut fonts = egui::FontDefinitions::default();
-        fonts.font_data.insert("font".to_owned(), FontData::from_static(include_bytes!("../resources/msyhbd.ttc"))); // .ttf and .otf supported
-        fonts.families.get_mut(&Proportional).unwrap()
+        fonts.font_data.insert(
+            "font".to_owned(),
+            FontData::from_static(include_bytes!("../resources/msyhbd.ttc")),
+        );
+        fonts
+            .families
+            .get_mut(&Proportional)
+            .unwrap()
             .insert(0, "font".to_owned());
-        fonts.families.get_mut(&FontFamily::Monospace).unwrap()
+        fonts
+            .families
+            .get_mut(&FontFamily::Monospace)
+            .unwrap()
             .push("font".to_owned());
         ctx.set_fonts(fonts);
         let mut style = (*ctx.style()).clone();
@@ -85,16 +94,16 @@ impl eframe::App for Player {
             (Button, FontId::new(14.0, Proportional)),
             (Small, FontId::new(10.0, Proportional)),
         ]
-            .into();
+        .into();
 
         ctx.set_style(style);
 
-        let is_play = Arc::clone(&self.is_play);
-        let speed = Arc::clone(&self.speed);
-        let pause = Arc::clone(&self.pause);
-        let opened_file = Arc::clone(&self.opened_file);
-        let show_file = opened_file.clone();
-        let events = Arc::clone(&self.events);
+        let is_play = self.is_play.clone();
+        let speed = self.speed.clone();
+        let pause = self.pause.clone();
+        let opened_file = self.opened_file.clone();
+        let show_file = self.opened_file.clone();
+        let events = self.events.clone();
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.label("Lyred by Ykong1337");
             ui.separator();
@@ -134,11 +143,11 @@ impl eframe::App for Player {
                 if !*is_play.lock().unwrap() {
                     *is_play.lock().unwrap() = true;
                     playback(
-                        Arc::clone(&self.events),
+                        self.events.clone(),
                         self.tuned,
-                        Arc::clone(&self.speed),
-                        Arc::clone(&self.is_play),
-                        Arc::clone(&self.pause),
+                        self.speed.clone(),
+                        self.is_play.clone(),
+                        self.pause.clone(),
                         self.mode.clone(),
                     );
                 }
