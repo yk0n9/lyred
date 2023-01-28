@@ -1,14 +1,13 @@
 use std::fs::read;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
 
 use chrono::Local;
-use enigo::Enigo;
 use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 
+use crate::Data;
 use crate::maps::{GEN_SHIN, VR_CHAT};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -24,7 +23,7 @@ struct Event<'a> {
 
 #[derive(Clone)]
 pub struct KeyEvent {
-    pub press: u8,
+    pub press: i32,
     pub delay: f64,
 }
 
@@ -33,7 +32,7 @@ const MAP: [i32; 42] = [
     65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95,
 ];
 
-pub fn init(opened_file: Arc<Mutex<Option<PathBuf>>>, key_events: Arc<Mutex<Vec<KeyEvent>>>) {
+pub fn init(opened_file: Data<Option<PathBuf>>, key_events: Data<Vec<KeyEvent>>) {
     let _ = thread::spawn(move || {
         let mut path = PathBuf::new();
         if let Some(file) = rfd::FileDialog::new()
@@ -84,7 +83,7 @@ pub fn init(opened_file: Arc<Mutex<Option<PathBuf>>>, key_events: Arc<Mutex<Vec<
                         time = (event.tick - tick) * (tempo / 1000.0 / resolution);
                         tick = event.tick;
                         result.push(KeyEvent {
-                            press: key.as_int(),
+                            press: key.as_int() as i32,
                             delay: time,
                         });
                     }
@@ -96,7 +95,7 @@ pub fn init(opened_file: Arc<Mutex<Option<PathBuf>>>, key_events: Arc<Mutex<Vec<
     });
 }
 
-pub fn tune(message: Arc<Mutex<Vec<KeyEvent>>>) -> i32 {
+pub fn tune(message: Data<Vec<KeyEvent>>) -> i32 {
     let len = message.lock().unwrap().len() as f32;
     let mut up_hit = vec![];
     let mut down_hit = vec![];
@@ -106,22 +105,25 @@ pub fn tune(message: Arc<Mutex<Vec<KeyEvent>>>) -> i32 {
     let mut down_shift = 0;
 
     rayon::join(
-        || tune_offset(message.clone(), len, &mut up_hit, 0, true),
-        || tune_offset(message.clone(), len, &mut down_hit, 0, false),
+        || {
+            tune_offset(message.clone(), len, &mut up_hit, 0, true);
+            for (i, x) in up_hit.into_iter().enumerate() {
+                if x > up_max {
+                    up_max = x;
+                    up_shift = i as i32;
+                }
+            }
+        },
+        || {
+            tune_offset(message.clone(), len, &mut down_hit, 0, false);
+            for (i, x) in down_hit.into_iter().enumerate() {
+                if x > down_max {
+                    down_max = x;
+                    down_shift = i as i32;
+                }
+            }
+        },
     );
-
-    for (i, x) in up_hit.into_iter().enumerate() {
-        if x > up_max {
-            up_max = x;
-            up_shift = i as i32;
-        }
-    }
-    for (i, x) in down_hit.into_iter().enumerate() {
-        if x > down_max {
-            down_max = x;
-            down_shift = i as i32;
-        }
-    }
 
     if up_shift > down_shift {
         return up_shift;
@@ -130,7 +132,7 @@ pub fn tune(message: Arc<Mutex<Vec<KeyEvent>>>) -> i32 {
 }
 
 fn tune_offset(
-    message: Arc<Mutex<Vec<KeyEvent>>>,
+    message: Data<Vec<KeyEvent>>,
     len: f32,
     hit_vec: &mut Vec<f32>,
     offset: i32,
@@ -162,15 +164,14 @@ fn tune_offset(
 }
 
 pub fn playback(
-    message: Arc<Mutex<Vec<KeyEvent>>>,
+    message: Data<Vec<KeyEvent>>,
     tuned: bool,
-    speed: Arc<Mutex<f64>>,
-    is_play: Arc<Mutex<bool>>,
-    pause: Arc<Mutex<bool>>,
+    speed: Data<f64>,
+    is_play: Data<bool>,
+    pause: Data<bool>,
     mode: Mode,
 ) {
     let _ = thread::spawn(move || {
-        let mut click = Enigo::new();
         let mut shift = 0;
         let send = match mode {
             Mode::GenShin => GEN_SHIN,
@@ -203,7 +204,7 @@ pub fn playback(
             }
 
             match *is_play.lock().unwrap() {
-                true => send(&mut click, (msg.press as i32 + shift) as u8),
+                true => send(msg.press + shift),
                 false => break,
             }
         }

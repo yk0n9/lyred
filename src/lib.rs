@@ -1,9 +1,19 @@
-use enigo::{Enigo, Key, KeyboardControllable};
+use std::sync::{Arc, Mutex};
+
+use rdev::{EventType, Key, simulate};
 
 pub mod midi;
 pub mod maps;
 
-pub fn press(click: &mut Enigo, key: Key) {
-    click.key_down(key);
-    click.key_up(key);
+pub type Data<T> = Arc<Mutex<T>>;
+
+pub fn press(event: &EventType) {
+    if let Ok(()) = simulate(event) {
+        ()
+    }
+}
+
+pub fn send(key: Key) {
+    press(&EventType::KeyPress(key));
+    press(&EventType::KeyRelease(key));
 }

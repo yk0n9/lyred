@@ -4,16 +4,17 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
+use eframe::{egui, Frame, IconData, NativeOptions};
+use eframe::egui::{Context, FontData, FontFamily, FontId, Slider, Vec2};
 use eframe::egui::FontFamily::Proportional;
 use eframe::egui::TextStyle::{Body, Heading, Small};
-use eframe::egui::{Context, FontData, FontFamily, FontId, Slider, Vec2};
 use eframe::Theme::Light;
-use eframe::{egui, Frame, IconData, NativeOptions};
 use egui::TextStyle::*;
 use windows_hotkeys::get_global_keystate;
 use windows_hotkeys::keys::VKey;
 
-use lyred::midi::{init, playback, KeyEvent, Mode};
+use lyred::Data;
+use lyred::midi::{init, KeyEvent, Mode, playback};
 
 fn main() -> Result<()> {
     let mut options = NativeOptions {
@@ -39,13 +40,13 @@ fn main() -> Result<()> {
 }
 
 pub struct Player {
-    pub speed: Arc<Mutex<f64>>,
+    pub speed: Data<f64>,
     pub tuned: bool,
-    pub is_play: Arc<Mutex<bool>>,
-    pub pause: Arc<Mutex<bool>>,
+    pub is_play: Data<bool>,
+    pub pause: Data<bool>,
     pub state: String,
-    pub opened_file: Arc<Mutex<Option<PathBuf>>>,
-    pub events: Arc<Mutex<Vec<KeyEvent>>>,
+    pub opened_file: Data<Option<PathBuf>>,
+    pub events: Data<Vec<KeyEvent>>,
     pub mode: Mode,
 }
 
