@@ -7,7 +7,7 @@ pub mod maps;
 
 pub type Data<T> = Arc<Mutex<T>>;
 
-pub fn press(event: &EventType) {
+fn press(event: &EventType) {
     if let Ok(()) = simulate(event) {
         ()
     }
