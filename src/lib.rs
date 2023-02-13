@@ -1,11 +1,15 @@
 use std::sync::{Arc, Mutex};
 
-use rdev::{EventType, Key, simulate};
+use rdev::{simulate, EventType, Key};
 
-pub mod midi;
 pub mod maps;
+pub mod midi;
 
 pub type Data<T> = Arc<Mutex<T>>;
+
+pub fn data_new<T>(val: T) -> Data<T> {
+    Arc::new(Mutex::new(val))
+}
 
 fn press(event: &EventType) {
     if let Ok(()) = simulate(event) {

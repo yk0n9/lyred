@@ -1,20 +1,19 @@
 #![windows_subsystem = "windows"]
 
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
-use eframe::{egui, Frame, IconData, NativeOptions};
-use eframe::egui::{Context, FontData, FontFamily, FontId, Slider, Vec2};
 use eframe::egui::FontFamily::Proportional;
 use eframe::egui::TextStyle::{Body, Heading, Small};
+use eframe::egui::{Context, FontData, FontFamily, FontId, Slider, Vec2};
 use eframe::Theme::Light;
+use eframe::{egui, Frame, IconData, NativeOptions};
 use egui::TextStyle::*;
 use windows_hotkeys::get_global_keystate;
 use windows_hotkeys::keys::VKey;
 
-use lyred::Data;
-use lyred::midi::{init, KeyEvent, Mode, playback};
+use lyred::midi::{init, playback, KeyEvent, Mode};
+use lyred::{data_new, Data};
 
 fn main() -> Result<()> {
     let mut options = NativeOptions {
@@ -53,13 +52,13 @@ pub struct Player {
 impl Default for Player {
     fn default() -> Self {
         Self {
-            speed: Arc::new(Mutex::new(1.0)),
+            speed: data_new(1.0),
             tuned: false,
-            is_play: Arc::new(Mutex::new(false)),
-            pause: Arc::new(Mutex::new(false)),
+            is_play: data_new(false),
+            pause: data_new(false),
             state: format!("已停止播放"),
-            opened_file: Arc::new(Mutex::new(None)),
-            events: Arc::new(Mutex::new(vec![])),
+            opened_file: data_new(None),
+            events: data_new(vec![]),
             mode: Mode::GenShin,
         }
     }

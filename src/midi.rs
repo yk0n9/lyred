@@ -7,8 +7,8 @@ use std::time::Duration;
 use chrono::Local;
 use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 
-use crate::Data;
 use crate::maps::{GEN_SHIN, VR_CHAT};
+use crate::Data;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Mode {
