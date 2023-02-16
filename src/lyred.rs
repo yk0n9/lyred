@@ -2,7 +2,6 @@
 
 use std::path::PathBuf;
 
-use anyhow::Result;
 use eframe::egui::FontFamily::Proportional;
 use eframe::egui::TextStyle::{Body, Heading, Small};
 use eframe::egui::{Context, FontData, FontFamily, FontId, Slider, Vec2};
@@ -15,7 +14,7 @@ use windows_hotkeys::keys::VKey;
 use lyred::midi::{init, playback, KeyEvent, Mode};
 use lyred::{data_new, Data};
 
-fn main() -> Result<()> {
+fn main() {
     let mut options = NativeOptions {
         default_theme: Light,
         resizable: false,
@@ -23,7 +22,8 @@ fn main() -> Result<()> {
         ..NativeOptions::default()
     };
     let icon_bytes = include_bytes!("../resources/lyre.ico");
-    let icon_buffer = image::load_from_memory(icon_bytes).unwrap();
+    let icon_buffer = image::load_from_memory(icon_bytes)
+        .unwrap();
     let icon = icon_buffer.to_rgba8();
     let (icon_width, icon_height) = icon.dimensions();
     let pixels = icon.into_vec();
@@ -33,9 +33,10 @@ fn main() -> Result<()> {
         height: icon_height,
     };
     options.icon_data = Some(icon_data);
-    eframe::run_native("Lyred", options, Box::new(|_| Box::new(Player::default()))).unwrap();
-
-    Ok(())
+    eframe::run_native("Lyred",
+                       options,
+                       Box::new(|_| Box::new(Player::default())))
+        .unwrap();
 }
 
 pub struct Player {
