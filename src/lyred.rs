@@ -73,13 +73,11 @@ impl eframe::App for Player {
             "font".to_owned(),
             FontData::from_static(include_bytes!("../resources/msyh.ttc")),
         );
-        fonts
-            .families
+        fonts.families
             .get_mut(&Proportional)
             .unwrap()
             .insert(0, "font".to_owned());
-        fonts
-            .families
+        fonts.families
             .get_mut(&FontFamily::Monospace)
             .unwrap()
             .push("font".to_owned());
@@ -95,7 +93,7 @@ impl eframe::App for Player {
             (Button, FontId::new(14.0, Proportional)),
             (Small, FontId::new(10.0, Proportional)),
         ]
-        .into();
+            .into();
 
         ctx.set_style(style);
 
