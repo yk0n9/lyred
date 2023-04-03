@@ -1,11 +1,14 @@
 use std::fs::read;
 use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
 
 use chrono::Local;
 use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
+use portable_atomic::AtomicF64;
 
 use crate::maps::{GEN_SHIN, VR_CHAT};
 use crate::Data;
@@ -166,9 +169,9 @@ fn tune_offset(
 pub fn playback(
     message: Data<Vec<KeyEvent>>,
     tuned: bool,
-    speed: Data<f64>,
-    is_play: Data<bool>,
-    pause: Data<bool>,
+    speed: Arc<AtomicF64>,
+    is_play: Arc<AtomicBool>,
+    pause: Arc<AtomicBool>,
     mode: Mode,
 ) {
     let _ = thread::spawn(move || {
@@ -185,9 +188,9 @@ pub fn playback(
         let mut start_time = Local::now().timestamp_millis();
         let mut input_time = 0.0;
         for msg in message.lock().unwrap().iter() {
-            if *pause.lock().unwrap() {
+            if pause.load(Ordering::Relaxed) {
                 loop {
-                    if !*pause.lock().unwrap() {
+                    if !pause.load(Ordering::Relaxed) {
                         input_time = msg.delay;
                         start_time = Local::now().timestamp_millis();
                         break;
@@ -195,7 +198,7 @@ pub fn playback(
                 }
             }
 
-            input_time += msg.delay / *speed.lock().unwrap();
+            input_time += msg.delay / speed.load(Ordering::Relaxed);
 
             let playback_time = (Local::now().timestamp_millis() - start_time) as f64;
             let current_time = (input_time - playback_time) as u64;
@@ -203,11 +206,11 @@ pub fn playback(
                 sleep(Duration::from_millis(current_time));
             }
 
-            match *is_play.lock().unwrap() {
+            match is_play.load(Ordering::Relaxed) {
                 true => send(msg.press + shift),
                 false => break,
             }
         }
-        *is_play.lock().unwrap() = false;
+        is_play.store(false, Ordering::Relaxed);
     });
 }

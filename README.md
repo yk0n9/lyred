@@ -13,4 +13,4 @@ Currently supported mappings: **Genshin**, **VRChat**
 
 # Getting Started
 
-Download the distribution from the "./target/release/"
+Download [Release](https://github.com/ykong1337/lyred/releases/latest)
