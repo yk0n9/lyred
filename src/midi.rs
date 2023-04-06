@@ -1,7 +1,7 @@
 use std::fs::read;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
@@ -37,44 +37,39 @@ const MAP: [i32; 42] = [
 
 pub fn init(opened_file: Data<Option<PathBuf>>, key_events: Data<Vec<KeyEvent>>) {
     let _ = thread::spawn(move || {
-        let mut path = PathBuf::new();
         if let Some(file) = rfd::FileDialog::new()
             .add_filter("MIDI File", &["mid"])
             .pick_file()
         {
-            path = file.clone();
-            *opened_file.lock().unwrap() = Some(file);
-        }
-        let file = read(path).unwrap();
-        let midi = Smf::parse(&file).expect("Not a Midi File");
-        let resolution = match midi.header.timing {
-            Timing::Metrical(resolution) => resolution.as_int() as f64,
-            _ => unimplemented!(),
-        };
-        let mut events = vec![];
-        let mut result = vec![];
+            *opened_file.lock().unwrap() = Some(file.clone());
 
-        midi.tracks.into_iter().for_each(|track| {
+            let file = read(file).unwrap();
+            let midi = Smf::parse(&file).expect("Not a Midi File");
+            let resolution = match midi.header.timing {
+                Timing::Metrical(resolution) => resolution.as_int() as f64,
+                _ => 480.0,
+            };
+            let mut events = vec![];
+            let mut result = vec![];
+
+            midi.tracks.into_iter().for_each(|track| {
+                let mut tick = 0.0;
+
+                for event in track {
+                    tick += event.delta.as_int() as f64;
+
+                    events.push(Event {
+                        event: event.kind,
+                        tick,
+                    });
+                }
+            });
+
+            events.sort_by_key(|e| e.tick as u64);
+
             let mut tick = 0.0;
-
-            for event in track {
-                tick += event.delta.as_int() as f64;
-
-                events.push(Event {
-                    event: event.kind,
-                    tick,
-                });
-            }
-        });
-
-        events.sort_by_key(|e| e.tick as u64);
-
-        let mut tick = 0.0;
-        let mut tempo = 500000.0;
-        events.into_iter().for_each(|event| {
-            let time: f64;
-
-            match event.event {
+            let mut tempo = 500000.0;
+            events.into_iter().for_each(|event| match event.event {
                 TrackEventKind::Meta(MetaMessage::Tempo(t)) => {
                     tempo = t.as_int() as f64;
                 }
@@ -83,7 +78,7 @@ pub fn init(opened_file: Data<Option<PathBuf>>, key_events: Data<Vec<KeyEvent>>)
                     message: MidiMessage::NoteOn { key, vel },
                 } => {
                     if vel > 0 {
-                        time = (event.tick - tick) * (tempo / 1000.0 / resolution);
+                        let time = (event.tick - tick) * (tempo / 1000.0 / resolution);
                         tick = event.tick;
                         result.push(KeyEvent {
                             press: key.as_int() as i32,
@@ -92,9 +87,9 @@ pub fn init(opened_file: Data<Option<PathBuf>>, key_events: Data<Vec<KeyEvent>>)
                     }
                 }
                 _ => {}
-            }
-        });
-        *key_events.lock().unwrap() = result;
+            });
+            *key_events.lock().unwrap() = result;
+        }
     });
 }
 

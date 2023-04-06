@@ -1,10 +1,11 @@
-use std::sync::{Arc, Mutex};
-use std::sync::atomic::AtomicBool;
 use once_cell::sync::Lazy;
 use portable_atomic::AtomicF64;
+use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, Mutex};
 
 use rdev::{simulate, EventType, Key};
 
+pub mod font;
 pub mod maps;
 pub mod midi;
 
