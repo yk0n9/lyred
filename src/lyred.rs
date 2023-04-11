@@ -15,6 +15,7 @@ use windows_hotkeys::keys::VKey;
 
 use lyred::midi::{init, playback, KeyEvent, Mode};
 use lyred::{data_new, Data, IS_PLAY, PAUSE, SPEED};
+use lyred::convert::convert_from_midi;
 
 fn main() {
     let mut options = NativeOptions {
@@ -74,7 +75,7 @@ impl eframe::App for Player {
             (Button, FontId::new(14.0, Proportional)),
             (Small, FontId::new(10.0, Proportional)),
         ]
-        .into();
+            .into();
         ctx.set_style(style);
 
         let is_play = IS_PLAY.clone();
@@ -87,10 +88,13 @@ impl eframe::App for Player {
             ui.separator();
             ui.horizontal(|ui| {
                 ui.label("选择你的MIDI文件");
-                if (ui.button("打开")).clicked() {
+                if ui.button("打开").clicked() {
                     is_play.store(false, Ordering::Relaxed);
                     pause.store(false, Ordering::Relaxed);
                     init(opened_file.clone(), events.clone());
+                }
+                if ui.button("从MIDI转换").clicked() {
+                    convert_from_midi(events.clone());
                 }
             });
             if let Some(path) = opened_file.lock().unwrap().as_ref() {
@@ -109,16 +113,18 @@ impl eframe::App for Player {
             ));
             ui.add(Slider::new(&mut self.speed, 0.1..=5.0).text("速度"));
             speed.store(self.speed, Ordering::Relaxed);
-            if ui.button("减速0.1x").clicked() {
-                if speed.load(Ordering::Relaxed) > 0.1 {
-                    self.speed -= 0.1;
+            ui.horizontal(|ui| {
+                if ui.button("减速0.1x").clicked() {
+                    if speed.load(Ordering::Relaxed) > 0.1 {
+                        self.speed -= 0.1;
+                        speed.store(self.speed, Ordering::Relaxed);
+                    }
+                }
+                if ui.button("加速0.1x").clicked() {
+                    self.speed += 0.1;
                     speed.store(self.speed, Ordering::Relaxed);
                 }
-            }
-            if ui.button("加速0.1x").clicked() {
-                self.speed += 0.1;
-                speed.store(self.speed, Ordering::Relaxed);
-            }
+            });
             ui.checkbox(&mut self.tuned, "开启自动调音");
             ui.separator();
             ui.label(&self.state);
