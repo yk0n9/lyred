@@ -13,9 +13,9 @@ use lyred::font::load_fonts;
 use windows_hotkeys::get_global_keystate;
 use windows_hotkeys::keys::VKey;
 
+use lyred::convert::convert_from_midi;
 use lyred::midi::{init, playback, KeyEvent, Mode};
 use lyred::{data_new, Data, IS_PLAY, PAUSE, SPEED};
-use lyred::convert::convert_from_midi;
 
 fn main() {
     let mut options = NativeOptions {
@@ -75,7 +75,7 @@ impl eframe::App for Player {
             (Button, FontId::new(14.0, Proportional)),
             (Small, FontId::new(10.0, Proportional)),
         ]
-            .into();
+        .into();
         ctx.set_style(style);
 
         let is_play = IS_PLAY.clone();
@@ -94,7 +94,9 @@ impl eframe::App for Player {
                     init(opened_file.clone(), events.clone());
                 }
                 if ui.button("从MIDI转换").clicked() {
-                    convert_from_midi(events.clone());
+                    if let Some(path) = opened_file.lock().unwrap().as_ref() {
+                        convert_from_midi(path.to_string_lossy().to_string(), events.clone());
+                    }
                 }
             });
             if let Some(path) = opened_file.lock().unwrap().as_ref() {

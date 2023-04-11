@@ -1,8 +1,8 @@
-use std::{fs, thread};
-use crate::Data;
 use crate::midi::KeyEvent;
+use crate::Data;
+use std::{fs, thread};
 
-pub fn convert_from_midi(data: Data<Vec<KeyEvent>>) {
+pub fn convert_from_midi(file_name: String, data: Data<Vec<KeyEvent>>) {
     let _ = thread::spawn(move || {
         let mut res = String::new();
         for e in data.lock().unwrap().iter() {
@@ -85,7 +85,11 @@ pub fn convert_from_midi(data: Data<Vec<KeyEvent>>) {
                 _ => phone.push(c),
             }
         }
-        fs::write("keyboard.txt", &res.to_uppercase()).unwrap();
-        fs::write("phone.txt", &phone).unwrap();
+        fs::write(
+            format!("{}-key", file_name.to_string()),
+            &res.to_uppercase(),
+        )
+        .unwrap();
+        fs::write(format!("{}-phone", file_name), &phone).unwrap();
     });
 }
