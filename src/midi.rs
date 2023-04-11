@@ -24,7 +24,7 @@ struct Event<'a> {
     tick: f64,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct KeyEvent {
     pub press: i32,
     pub delay: f64,

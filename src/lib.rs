@@ -8,6 +8,7 @@ use rdev::{simulate, EventType, Key};
 pub mod font;
 pub mod maps;
 pub mod midi;
+pub mod convert;
 
 pub static SPEED: Lazy<Arc<AtomicF64>> = Lazy::new(|| Arc::new(AtomicF64::new(1.0)));
 pub static IS_PLAY: Lazy<Arc<AtomicBool>> = Lazy::new(|| Arc::new(AtomicBool::new(false)));
