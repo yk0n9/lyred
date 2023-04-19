@@ -1,9 +1,13 @@
 use crate::midi::KeyEvent;
 use crate::Data;
-use std::{fs, thread};
+use std::fs::File;
+use std::io::Write;
+use std::thread;
 
 pub fn convert_from_midi(file_name: String, data: Data<Vec<KeyEvent>>) {
     let _ = thread::spawn(move || {
+        let mut key = File::create(format!("{}.txt", file_name.to_string())).unwrap();
+        let mut key_phone = File::create(format!("phone-{}.txt", file_name)).unwrap();
         let mut res = String::new();
         for e in data.lock().unwrap().iter() {
             match e.press {
@@ -53,43 +57,34 @@ pub fn convert_from_midi(file_name: String, data: Data<Vec<KeyEvent>>) {
             }
             match e.delay {
                 e if e > 50.0 && e <= 700.0 => res.push_str(" - "),
-                e if e > 700.0 && e <= 2000.0 => res.push_str(" --- "),
+                e if e > 700.0 && e <= 2000.0 => res.push_str(" / "),
                 e if e > 2000.0 => res.push_str("\n\n"),
                 _ => {}
             }
         }
-        let mut phone = String::new();
-        for c in res.chars() {
-            match c {
-                'q' => phone.push_str("+1"),
-                'w' => phone.push_str("+2"),
-                'e' => phone.push_str("+3"),
-                'r' => phone.push_str("+4"),
-                't' => phone.push_str("+5"),
-                'y' => phone.push_str("+6"),
-                'u' => phone.push_str("+7"),
-                'a' => phone.push_str("1"),
-                's' => phone.push_str("2"),
-                'd' => phone.push_str("3"),
-                'f' => phone.push_str("4"),
-                'g' => phone.push_str("5"),
-                'h' => phone.push_str("6"),
-                'j' => phone.push_str("7"),
-                'z' => phone.push_str("-1"),
-                'x' => phone.push_str("-2"),
-                'c' => phone.push_str("-3"),
-                'v' => phone.push_str("-4"),
-                'b' => phone.push_str("-5"),
-                'n' => phone.push_str("-6"),
-                'm' => phone.push_str("-7"),
-                _ => phone.push(c),
-            }
-        }
-        fs::write(
-            format!("{}-key", file_name.to_string()),
-            &res.to_uppercase(),
-        )
-        .unwrap();
-        fs::write(format!("{}-phone", file_name), &phone).unwrap();
+        let phone = res
+            .replace("q", "+1")
+            .replace("w", "+2")
+            .replace("e", "+3")
+            .replace("r", "+4")
+            .replace("t", "+5")
+            .replace("y", "+6")
+            .replace("u", "+7")
+            .replace("a", "1")
+            .replace("s", "2")
+            .replace("d", "3")
+            .replace("f", "4")
+            .replace("g", "5")
+            .replace("h", "6")
+            .replace("j", "7")
+            .replace("z", "-1")
+            .replace("x", "-2")
+            .replace("c", "-3")
+            .replace("v", "-4")
+            .replace("b", "-5")
+            .replace("n", "-6")
+            .replace("m", "-7");
+        key.write(res.to_uppercase().as_bytes()).unwrap();
+        key_phone.write(phone.as_bytes()).unwrap();
     });
 }

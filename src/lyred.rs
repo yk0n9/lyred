@@ -95,7 +95,8 @@ impl eframe::App for Player {
                 }
                 if ui.button("从MIDI转换").clicked() {
                     if let Some(path) = opened_file.lock().unwrap().as_ref() {
-                        convert_from_midi(path.to_string_lossy().to_string(), events.clone());
+                        let name = path.file_stem().unwrap().to_string_lossy().to_string();
+                        convert_from_midi(name, events.clone());
                     }
                 }
             });
