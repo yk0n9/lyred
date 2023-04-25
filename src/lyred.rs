@@ -7,7 +7,7 @@ use eframe::egui::FontFamily::Proportional;
 use eframe::egui::TextStyle::{Body, Heading, Small};
 use eframe::egui::{Context, FontId, Slider, Vec2};
 use eframe::Theme::Light;
-use eframe::{egui, Frame, IconData, NativeOptions};
+use eframe::{CreationContext, egui, Frame, IconData, NativeOptions};
 use egui::TextStyle::*;
 use lyred::font::load_fonts;
 use windows_hotkeys::get_global_keystate;
@@ -35,7 +35,12 @@ fn main() {
         height: icon_height,
     };
     options.icon_data = Some(icon_data);
-    eframe::run_native("Lyred", options, Box::new(|_| Box::new(Player::default()))).unwrap();
+    eframe::run_native(
+        "Lyred",
+        options,
+        Box::new(|cc| Box::new(Player::new(cc)))
+    )
+        .unwrap();
 }
 
 pub struct Player {
@@ -47,8 +52,24 @@ pub struct Player {
     pub mode: Mode,
 }
 
-impl Default for Player {
-    fn default() -> Self {
+impl Player {
+    fn new(cc: &CreationContext) -> Self {
+        cc.egui_ctx.request_repaint();
+
+        load_fonts(&cc.egui_ctx);
+        let mut style = (*cc.egui_ctx.style()).clone();
+        style.text_styles = [
+            (Heading, FontId::new(30.0, Proportional)),
+            (Name("Heading2".into()), FontId::new(25.0, Proportional)),
+            (Name("Context".into()), FontId::new(23.0, Proportional)),
+            (Body, FontId::new(18.0, Proportional)),
+            (Monospace, FontId::new(14.0, Proportional)),
+            (Button, FontId::new(14.0, Proportional)),
+            (Small, FontId::new(10.0, Proportional)),
+        ]
+            .into();
+        cc.egui_ctx.set_style(style);
+
         Self {
             speed: 1.0,
             tuned: false,
@@ -62,21 +83,6 @@ impl Default for Player {
 
 impl eframe::App for Player {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
-        ctx.request_repaint();
-
-        load_fonts(ctx);
-        let mut style = (*ctx.style()).clone();
-        style.text_styles = [
-            (Heading, FontId::new(30.0, Proportional)),
-            (Name("Heading2".into()), FontId::new(25.0, Proportional)),
-            (Name("Context".into()), FontId::new(23.0, Proportional)),
-            (Body, FontId::new(18.0, Proportional)),
-            (Monospace, FontId::new(14.0, Proportional)),
-            (Button, FontId::new(14.0, Proportional)),
-            (Small, FontId::new(10.0, Proportional)),
-        ]
-        .into();
-        ctx.set_style(style);
 
         let is_play = IS_PLAY.clone();
         let speed = SPEED.clone();
