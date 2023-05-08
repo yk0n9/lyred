@@ -171,7 +171,7 @@ pub fn playback(
 ) {
     let _ = thread::spawn(move || {
         let mut shift = 0;
-        let send = match mode {
+        let send = match &mode {
             Mode::GenShin => GEN_SHIN,
             Mode::VRChat => VR_CHAT,
         };

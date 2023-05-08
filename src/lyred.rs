@@ -24,7 +24,7 @@ fn main() {
         initial_window_size: Some(Vec2::new(400.0, 500.0)),
         ..NativeOptions::default()
     };
-    let icon_bytes = include_bytes!("../resources/lyre.ico");
+    let icon_bytes: &[u8] = include_bytes!("../resources/lyre.ico");
     let icon_buffer = image::load_from_memory(icon_bytes).unwrap();
     let icon = icon_buffer.to_rgba8();
     let (icon_width, icon_height) = icon.dimensions();
@@ -38,7 +38,7 @@ fn main() {
     eframe::run_native(
         "Lyred",
         options,
-        Box::new(|cc| Box::new(Player::new(cc)))
+        Box::new(|cc| Box::new(Player::new(cc))),
     )
         .unwrap();
 }
@@ -54,8 +54,6 @@ pub struct Player {
 
 impl Player {
     fn new(cc: &CreationContext) -> Self {
-        cc.egui_ctx.request_repaint();
-
         load_fonts(&cc.egui_ctx);
         let mut style = (*cc.egui_ctx.style()).clone();
         style.text_styles = [
@@ -83,30 +81,26 @@ impl Player {
 
 impl eframe::App for Player {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+        ctx.request_repaint();
 
-        let is_play = IS_PLAY.clone();
-        let speed = SPEED.clone();
-        let pause = PAUSE.clone();
-        let opened_file = self.opened_file.clone();
-        let events = self.events.clone();
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.label("Lyred by Ykong1337");
             ui.separator();
             ui.horizontal(|ui| {
                 ui.label("选择你的MIDI文件");
                 if ui.button("打开").clicked() {
-                    is_play.store(false, Ordering::Relaxed);
-                    pause.store(false, Ordering::Relaxed);
-                    init(opened_file.clone(), events.clone());
+                    IS_PLAY.store(false, Ordering::Relaxed);
+                    PAUSE.store(false, Ordering::Relaxed);
+                    init(self.opened_file.clone(), self.events.clone());
                 }
                 if ui.button("从MIDI转换").clicked() {
-                    if let Some(path) = opened_file.lock().unwrap().as_ref() {
+                    if let Some(path) = self.opened_file.clone().lock().unwrap().as_ref() {
                         let name = path.file_stem().unwrap().to_string_lossy().to_string();
-                        convert_from_midi(name, events.clone());
+                        convert_from_midi(name, self.events.clone());
                     }
                 }
             });
-            if let Some(path) = opened_file.lock().unwrap().as_ref() {
+            if let Some(path) = self.opened_file.clone().lock().unwrap().as_ref() {
                 ui.label(&format!("你选择的是: {}", path.to_str().unwrap()));
             }
             ui.separator();
@@ -118,55 +112,55 @@ impl eframe::App for Player {
             ui.separator();
             ui.label(&format!(
                 "你的播放速度是: {}x",
-                speed.load(Ordering::Relaxed)
+                SPEED.load(Ordering::Relaxed)
             ));
             ui.add(Slider::new(&mut self.speed, 0.1..=5.0).text("速度"));
-            speed.store(self.speed, Ordering::Relaxed);
+            SPEED.store(self.speed, Ordering::Relaxed);
             ui.horizontal(|ui| {
                 if ui.button("减速0.1x").clicked() {
-                    if speed.load(Ordering::Relaxed) > 0.1 {
+                    if SPEED.load(Ordering::Relaxed) > 0.1 {
                         self.speed -= 0.1;
-                        speed.store(self.speed, Ordering::Relaxed);
+                        SPEED.store(self.speed, Ordering::Relaxed);
                     }
                 }
                 if ui.button("加速0.1x").clicked() {
                     self.speed += 0.1;
-                    speed.store(self.speed, Ordering::Relaxed);
+                    SPEED.store(self.speed, Ordering::Relaxed);
                 }
             });
             ui.checkbox(&mut self.tuned, "开启自动调音");
             ui.separator();
             ui.label(&self.state);
             if get_global_keystate(VKey::Space) {
-                pause.store(false, Ordering::Relaxed);
-                if !is_play.load(Ordering::Relaxed) {
-                    is_play.store(true, Ordering::Relaxed);
+                PAUSE.store(false, Ordering::Relaxed);
+                if !IS_PLAY.load(Ordering::Relaxed) {
+                    IS_PLAY.store(true, Ordering::Relaxed);
                     playback(
-                        events.clone(),
+                        self.events.clone(),
                         self.tuned,
-                        speed.clone(),
-                        is_play.clone(),
-                        pause.clone(),
+                        SPEED.clone(),
+                        IS_PLAY.clone(),
+                        PAUSE.clone(),
                         self.mode.clone(),
                     );
                 }
             }
             if get_global_keystate(VKey::Control) {
-                pause.store(false, Ordering::Relaxed);
-                is_play.store(false, Ordering::Relaxed);
+                PAUSE.store(false, Ordering::Relaxed);
+                IS_PLAY.store(false, Ordering::Relaxed);
             }
             if get_global_keystate(VKey::Back) {
-                if !pause.load(Ordering::Relaxed) {
-                    pause.store(true, Ordering::Relaxed);
+                if !PAUSE.load(Ordering::Relaxed) {
+                    PAUSE.store(true, Ordering::Relaxed);
                 }
             }
-            if is_play.load(Ordering::Relaxed) && !pause.load(Ordering::Relaxed) {
+            if IS_PLAY.load(Ordering::Relaxed) && !PAUSE.load(Ordering::Relaxed) {
                 self.state = format!("正在播放中...");
             }
-            if !is_play.load(Ordering::Relaxed) {
+            if !IS_PLAY.load(Ordering::Relaxed) {
                 self.state = format!("已停止播放");
             }
-            if pause.load(Ordering::Relaxed) && is_play.load(Ordering::Relaxed) {
+            if PAUSE.load(Ordering::Relaxed) && IS_PLAY.load(Ordering::Relaxed) {
                 self.state = format!("已暂停播放");
             }
             ui.separator();
