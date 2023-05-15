@@ -36,7 +36,7 @@ const MAP: [i32; 42] = [
 ];
 
 pub fn init(opened_file: Data<Option<PathBuf>>, key_events: Data<Vec<KeyEvent>>) {
-    let _ = thread::spawn(move || {
+    thread::spawn(move || {
         if let Some(file) = rfd::FileDialog::new()
             .add_filter("MIDI File", &["mid"])
             .pick_file()
@@ -161,6 +161,43 @@ fn tune_offset(
     }
 }
 
+// pub struct Play {
+//     start_time: i64,
+//     input_time: f64,
+//     events: Vec<KeyEvent>,
+//     index: usize,
+//     len: usize,
+// }
+//
+// impl Iterator for Play {
+//     type Item = i32;
+//
+//     fn next(&mut self) -> Option<Self::Item> {
+//         if self.index < self.len {
+//             let idx = self.index;
+//             self.index += 1;
+//             self.input_time += self.events[idx].delay / SPEED.load(Ordering::Relaxed);
+//             let playback_time = (Local::now().timestamp_millis() - self.start_time) as f64;
+//             let current_time = (self.input_time - playback_time) as u64;
+//             if current_time > 0 {
+//                 sleep(Duration::from_millis(current_time));
+//             }
+//             return Some(self.events[idx].press);
+//         }
+//         None
+//     }
+// }
+//
+// pub fn play() -> Play {
+//     Play {
+//         start_time: Local::now().timestamp_millis(),
+//         input_time: 0.0,
+//         events: vec![],
+//         index: 0,
+//         len: 0,
+//     }
+// }
+
 pub fn playback(
     message: Data<Vec<KeyEvent>>,
     tuned: bool,
@@ -169,7 +206,7 @@ pub fn playback(
     pause: Arc<AtomicBool>,
     mode: Mode,
 ) {
-    let _ = thread::spawn(move || {
+    thread::spawn(move || {
         let mut shift = 0;
         let send = match &mode {
             Mode::GenShin => GEN_SHIN,
