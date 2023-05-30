@@ -1,13 +1,13 @@
-use std::sync::atomic::Ordering;
-use eframe::{App, CreationContext, egui, Frame};
-use eframe::egui::FontFamily::Proportional;
-use eframe::egui::{Context, FontId, Slider};
-use eframe::egui::TextStyle::*;
-use windows_hotkeys::get_global_keystate;
-use windows_hotkeys::keys::VKey;
 use crate::convert::convert_from_midi;
 use crate::font::load_fonts;
-use crate::midi::{GEN_SHIN, init, IS_PLAY, Midi, PAUSE, playback, SPEED, VR_CHAT};
+use crate::midi::{init, playback, Midi, GEN_SHIN, IS_PLAY, PAUSE, SPEED, VR_CHAT};
+use eframe::egui::FontFamily::Proportional;
+use eframe::egui::TextStyle::*;
+use eframe::egui::{Context, FontId, Slider};
+use eframe::{egui, App, CreationContext, Frame};
+use std::sync::atomic::Ordering;
+use windows_hotkeys::get_global_keystate;
+use windows_hotkeys::keys::VKey;
 
 #[derive(Debug, Clone)]
 pub struct Play {
@@ -30,7 +30,8 @@ impl Play {
             (Monospace, FontId::new(14.0, Proportional)),
             (Button, FontId::new(14.0, Proportional)),
             (Small, FontId::new(10.0, Proportional)),
-        ].into();
+        ]
+        .into();
         cc.egui_ctx.set_style(style);
 
         Self {
@@ -47,7 +48,7 @@ impl App for Play {
     fn update(&mut self, ctx: &Context, _: &mut Frame) {
         ctx.request_repaint();
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Lyred");
+            ui.vertical_centered(|ui| ui.heading("Lyred"));
             ui.separator();
             ui.horizontal(|ui| {
                 ui.label("选择MIDI文件");

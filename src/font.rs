@@ -4,12 +4,12 @@ use font_kit::source::SystemSource;
 pub fn load_fonts(ctx: &egui::Context) {
     let sys = SystemSource::new();
     let font_name = format!("SimHei");
-    let font = sys.select_family_by_name(&font_name)
-        .unwrap()
-        .fonts()[0].load()
+    let font = sys.select_family_by_name(&font_name).unwrap().fonts()[0]
+        .load()
         .unwrap()
         .copy_font_data()
-        .unwrap().to_vec();
+        .unwrap()
+        .to_vec();
     let mut font_defs = egui::FontDefinitions::default();
     font_defs
         .font_data

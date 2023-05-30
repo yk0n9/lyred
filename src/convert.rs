@@ -1,8 +1,8 @@
+use crate::midi::Midi;
+use rfd::MessageButtons;
 use std::fs::File;
 use std::io::Write;
 use std::thread;
-use rfd::MessageButtons;
-use crate::midi::Midi;
 
 pub fn convert_from_midi(file_name: String, midi: Midi) {
     let _ = thread::spawn(move || {

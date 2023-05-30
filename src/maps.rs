@@ -1,4 +1,4 @@
-use rdev::{EventType, Key, simulate};
+use rdev::{simulate, EventType, Key};
 
 #[inline]
 fn press(event: &EventType) {

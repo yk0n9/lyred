@@ -1,15 +1,15 @@
-use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::thread;
-use std::thread::sleep;
-use std::time::Duration;
+use crate::maps::{GEN, VR};
 use chrono::Local;
 use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 use once_cell::sync::Lazy;
 use portable_atomic::AtomicF64;
 use rayon::prelude::*;
-use crate::maps::{GEN, VR};
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::thread::sleep;
+use std::time::Duration;
 
 pub static SPEED: Lazy<Arc<AtomicF64>> = Lazy::new(|| Arc::new(AtomicF64::new(1.0)));
 pub static IS_PLAY: Lazy<Arc<AtomicBool>> = Lazy::new(|| Arc::new(AtomicBool::new(false)));
@@ -96,7 +96,8 @@ pub fn init(midi: Midi) {
     thread::spawn(move || {
         if let Some(path) = rfd::FileDialog::new()
             .add_filter("MIDI File", &["mid"])
-            .pick_file() {
+            .pick_file()
+        {
             *midi.file_name.lock().unwrap() = Some(path.clone());
 
             let file = std::fs::read(path).unwrap();
@@ -118,26 +119,27 @@ pub fn init(midi: Midi) {
                 });
             });
 
-            raw_events.par_sort_unstable_by_key(|e| e.tick as u64);
+            raw_events.par_sort_by_key(|e| e.tick as u64);
 
             let mut tick = 0.0;
             let mut tempo = 500000.0;
             let mut events = vec![];
-            raw_events.into_iter().for_each(|event| {
-                match event.event {
-                    TrackEventKind::Meta(MetaMessage::Tempo(t)) => tempo = t.as_int() as f64,
-                    TrackEventKind::Midi { message: MidiMessage::NoteOn { key, vel }, .. } => {
-                        if vel > 0 {
-                            let time = (event.tick - tick) * (tempo / 1000.0 / fps);
-                            tick = event.tick;
-                            events.push(Event {
-                                press: key.as_int() as i32,
-                                delay: time,
-                            });
-                        }
+            raw_events.into_iter().for_each(|event| match event.event {
+                TrackEventKind::Meta(MetaMessage::Tempo(t)) => tempo = t.as_int() as f64,
+                TrackEventKind::Midi {
+                    message: MidiMessage::NoteOn { key, vel },
+                    ..
+                } => {
+                    if vel > 0 {
+                        let time = (event.tick - tick) * (tempo / 1000.0 / fps);
+                        tick = event.tick;
+                        events.push(Event {
+                            press: key.as_int() as i32,
+                            delay: time,
+                        });
                     }
-                    _ => {}
                 }
+                _ => {}
             });
             *midi.events.lock().unwrap() = events;
         }
@@ -153,7 +155,7 @@ pub fn playback(midi: Midi, tuned: bool, mode: i32) {
         let send = match mode {
             GEN_SHIN => GEN,
             VR_CHAT => VR,
-            _ => GEN
+            _ => GEN,
         };
         for i in midi.play() {
             send(i + shift);
@@ -209,13 +211,7 @@ pub fn tune(midi: Midi) -> i32 {
     -down_shift
 }
 
-fn tune_offset(
-    midi: Midi,
-    len: f32,
-    hit_vec: &mut Vec<f32>,
-    offset: i32,
-    direction: bool,
-) {
+fn tune_offset(midi: Midi, len: f32, hit_vec: &mut Vec<f32>, offset: i32, direction: bool) {
     let mut hit_count = 0.0;
     for msg in midi.events.lock().unwrap().iter() {
         let key = msg.press as i32 + offset;

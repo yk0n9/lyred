@@ -25,9 +25,5 @@ fn run() {
         height: icon_height,
     };
     options.icon_data = Some(icon_data);
-    eframe::run_native(
-        "Lyred",
-        options,
-        Box::new(|cc| Box::new(Play::new(cc))),
-    ).unwrap();
+    eframe::run_native("Lyred", options, Box::new(|cc| Box::new(Play::new(cc)))).unwrap();
 }
