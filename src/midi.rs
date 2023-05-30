@@ -1,100 +1,180 @@
-use std::fs::read;
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
-
 use chrono::Local;
 use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
+use once_cell::sync::Lazy;
 use portable_atomic::AtomicF64;
+use rayon::prelude::*;
+use crate::maps::{GEN, VR};
 
-use crate::maps::{GEN_SHIN, VR_CHAT};
-use crate::Data;
+pub static SPEED: Lazy<Arc<AtomicF64>> = Lazy::new(|| Arc::new(AtomicF64::new(1.0)));
+pub static IS_PLAY: Lazy<Arc<AtomicBool>> = Lazy::new(|| Arc::new(AtomicBool::new(false)));
+pub static PAUSE: Lazy<Arc<AtomicBool>> = Lazy::new(|| Arc::new(AtomicBool::new(false)));
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum Mode {
-    GenShin,
-    VRChat,
-}
-
-struct Event<'a> {
-    event: TrackEventKind<'a>,
-    tick: f64,
-}
-
-#[derive(Debug, Clone)]
-pub struct KeyEvent {
-    pub press: i32,
-    pub delay: f64,
-}
+pub const GEN_SHIN: i32 = 0;
+pub const VR_CHAT: i32 = 1;
 
 const MAP: [i32; 42] = [
     24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64,
     65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95,
 ];
 
-pub fn init(opened_file: Data<Option<PathBuf>>, key_events: Data<Vec<KeyEvent>>) {
-    thread::spawn(move || {
-        if let Some(file) = rfd::FileDialog::new()
-            .add_filter("MIDI File", &["mid"])
-            .pick_file()
-        {
-            *opened_file.lock().unwrap() = Some(file.clone());
+#[derive(Debug, Clone)]
+pub struct Midi {
+    pub file_name: Arc<Mutex<Option<PathBuf>>>,
+    pub events: Arc<Mutex<Vec<Event>>>,
+}
 
-            let file = read(file).unwrap();
-            let midi = Smf::parse(&file).expect("Not a Midi File");
-            let resolution = match midi.header.timing {
-                Timing::Metrical(resolution) => resolution.as_int() as f64,
+impl Midi {
+    #[inline]
+    pub fn new() -> Self {
+        Midi {
+            file_name: Arc::new(Mutex::new(None)),
+            events: Arc::new(Mutex::new(vec![])),
+        }
+    }
+
+    #[inline]
+    pub fn play(&self) -> Iter {
+        let events = self.events.lock().unwrap();
+        Iter {
+            start_time: Local::now().timestamp_millis(),
+            input_time: 0.0,
+            events: events.to_vec(),
+            index: 0,
+            len: events.len(),
+        }
+    }
+}
+
+pub struct Iter {
+    start_time: i64,
+    input_time: f64,
+    events: Vec<Event>,
+    index: usize,
+    len: usize,
+}
+
+impl Iterator for Iter {
+    type Item = i32;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.index < self.len {
+            true => {
+                let i = self.index;
+                if PAUSE.load(Ordering::Relaxed) {
+                    loop {
+                        if !PAUSE.load(Ordering::Relaxed) {
+                            self.input_time = self.events[i].delay;
+                            self.start_time = Local::now().timestamp_millis();
+                            break;
+                        }
+                    }
+                }
+                self.index += 1;
+                self.input_time += self.events[i].delay / SPEED.load(Ordering::Relaxed);
+                let playback_time = (Local::now().timestamp_millis() - self.start_time) as f64;
+                let current_time = (self.input_time - playback_time) as u64;
+                if current_time > 0 {
+                    sleep(Duration::from_millis(current_time));
+                }
+                match IS_PLAY.load(Ordering::Relaxed) {
+                    true => Some(self.events[i].press),
+                    false => None,
+                }
+            }
+            false => None,
+        }
+    }
+}
+
+pub fn init(midi: Midi) {
+    thread::spawn(move || {
+        if let Some(path) = rfd::FileDialog::new()
+            .add_filter("MIDI File", &["mid"])
+            .pick_file() {
+            *midi.file_name.lock().unwrap() = Some(path.clone());
+
+            let file = std::fs::read(path).unwrap();
+            let smf = Smf::parse(&file).unwrap();
+            let fps = match smf.header.timing {
+                Timing::Metrical(fps) => fps.as_int() as f64,
                 _ => 480.0,
             };
-            let mut events = vec![];
-            let mut result = vec![];
 
-            midi.tracks.into_iter().for_each(|track| {
+            let mut raw_events = vec![];
+            smf.tracks.into_iter().for_each(|track| {
                 let mut tick = 0.0;
-
-                for event in track {
+                track.into_iter().for_each(|event| {
                     tick += event.delta.as_int() as f64;
-
-                    events.push(Event {
+                    raw_events.push(RawEvent {
                         event: event.kind,
                         tick,
                     });
-                }
+                });
             });
 
-            events.sort_by_key(|e| e.tick as u64);
+            raw_events.par_sort_unstable_by_key(|e| e.tick as u64);
 
             let mut tick = 0.0;
             let mut tempo = 500000.0;
-            events.into_iter().for_each(|event| match event.event {
-                TrackEventKind::Meta(MetaMessage::Tempo(t)) => {
-                    tempo = t.as_int() as f64;
-                }
-                TrackEventKind::Midi {
-                    channel: _,
-                    message: MidiMessage::NoteOn { key, vel },
-                } => {
-                    if vel > 0 {
-                        let time = (event.tick - tick) * (tempo / 1000.0 / resolution);
-                        tick = event.tick;
-                        result.push(KeyEvent {
-                            press: key.as_int() as i32,
-                            delay: time,
-                        });
+            let mut events = vec![];
+            raw_events.into_iter().for_each(|event| {
+                match event.event {
+                    TrackEventKind::Meta(MetaMessage::Tempo(t)) => tempo = t.as_int() as f64,
+                    TrackEventKind::Midi { message: MidiMessage::NoteOn { key, vel }, .. } => {
+                        if vel > 0 {
+                            let time = (event.tick - tick) * (tempo / 1000.0 / fps);
+                            tick = event.tick;
+                            events.push(Event {
+                                press: key.as_int() as i32,
+                                delay: time,
+                            });
+                        }
                     }
+                    _ => {}
                 }
-                _ => {}
             });
-            *key_events.lock().unwrap() = result;
+            *midi.events.lock().unwrap() = events;
         }
     });
 }
 
-pub fn tune(message: Data<Vec<KeyEvent>>) -> i32 {
-    let len = message.lock().unwrap().len() as f32;
+pub fn playback(midi: Midi, tuned: bool, mode: i32) {
+    thread::spawn(move || {
+        let mut shift = 0;
+        if tuned {
+            shift = tune(midi.clone());
+        }
+        let send = match mode {
+            GEN_SHIN => GEN,
+            VR_CHAT => VR,
+            _ => GEN
+        };
+        for i in midi.play() {
+            send(i + shift);
+        }
+        IS_PLAY.store(false, Ordering::Relaxed);
+    });
+}
+
+struct RawEvent<'a> {
+    event: TrackEventKind<'a>,
+    tick: f64,
+}
+
+#[derive(Debug, Clone)]
+pub struct Event {
+    pub press: i32,
+    pub delay: f64,
+}
+
+pub fn tune(midi: Midi) -> i32 {
+    let len = midi.events.lock().unwrap().len() as f32;
     let mut up_hit = vec![];
     let mut down_hit = vec![];
     let mut up_max = 0.0;
@@ -104,7 +184,7 @@ pub fn tune(message: Data<Vec<KeyEvent>>) -> i32 {
 
     rayon::join(
         || {
-            tune_offset(message.clone(), len, &mut up_hit, 0, true);
+            tune_offset(midi.clone(), len, &mut up_hit, 0, true);
             for (i, x) in up_hit.into_iter().enumerate() {
                 if x > up_max {
                     up_max = x;
@@ -113,7 +193,7 @@ pub fn tune(message: Data<Vec<KeyEvent>>) -> i32 {
             }
         },
         || {
-            tune_offset(message.clone(), len, &mut down_hit, 0, false);
+            tune_offset(midi.clone(), len, &mut down_hit, 0, false);
             for (i, x) in down_hit.into_iter().enumerate() {
                 if x > down_max {
                     down_max = x;
@@ -130,14 +210,14 @@ pub fn tune(message: Data<Vec<KeyEvent>>) -> i32 {
 }
 
 fn tune_offset(
-    message: Data<Vec<KeyEvent>>,
+    midi: Midi,
     len: f32,
     hit_vec: &mut Vec<f32>,
     offset: i32,
     direction: bool,
 ) {
     let mut hit_count = 0.0;
-    for msg in message.lock().unwrap().iter() {
+    for msg in midi.events.lock().unwrap().iter() {
         let key = msg.press as i32 + offset;
         if MAP.contains(&key) {
             hit_count += 1.0;
@@ -150,99 +230,13 @@ fn tune_offset(
             if offset > 21 {
                 return;
             }
-            tune_offset(message, len, hit_vec, offset + 1, true);
+            tune_offset(midi, len, hit_vec, offset + 1, true);
         }
-        _ => {
+        false => {
             if offset < -21 {
                 return;
             }
-            tune_offset(message, len, hit_vec, offset - 1, false);
+            tune_offset(midi, len, hit_vec, offset - 1, false);
         }
     }
-}
-
-// pub struct Play {
-//     start_time: i64,
-//     input_time: f64,
-//     events: Vec<KeyEvent>,
-//     index: usize,
-//     len: usize,
-// }
-//
-// impl Iterator for Play {
-//     type Item = i32;
-//
-//     fn next(&mut self) -> Option<Self::Item> {
-//         if self.index < self.len {
-//             let idx = self.index;
-//             self.index += 1;
-//             self.input_time += self.events[idx].delay / SPEED.load(Ordering::Relaxed);
-//             let playback_time = (Local::now().timestamp_millis() - self.start_time) as f64;
-//             let current_time = (self.input_time - playback_time) as u64;
-//             if current_time > 0 {
-//                 sleep(Duration::from_millis(current_time));
-//             }
-//             return Some(self.events[idx].press);
-//         }
-//         None
-//     }
-// }
-//
-// pub fn play() -> Play {
-//     Play {
-//         start_time: Local::now().timestamp_millis(),
-//         input_time: 0.0,
-//         events: vec![],
-//         index: 0,
-//         len: 0,
-//     }
-// }
-
-pub fn playback(
-    message: Data<Vec<KeyEvent>>,
-    tuned: bool,
-    speed: Arc<AtomicF64>,
-    is_play: Arc<AtomicBool>,
-    pause: Arc<AtomicBool>,
-    mode: Mode,
-) {
-    thread::spawn(move || {
-        let mut shift = 0;
-        let send = match &mode {
-            Mode::GenShin => GEN_SHIN,
-            Mode::VRChat => VR_CHAT,
-        };
-
-        if tuned {
-            shift = tune(message.clone());
-        }
-
-        let mut start_time = Local::now().timestamp_millis();
-        let mut input_time = 0.0;
-        for msg in message.lock().unwrap().iter() {
-            if pause.load(Ordering::Relaxed) {
-                loop {
-                    if !pause.load(Ordering::Relaxed) {
-                        input_time = msg.delay;
-                        start_time = Local::now().timestamp_millis();
-                        break;
-                    }
-                }
-            }
-
-            input_time += msg.delay / speed.load(Ordering::Relaxed);
-
-            let playback_time = (Local::now().timestamp_millis() - start_time) as f64;
-            let current_time = (input_time - playback_time) as u64;
-            if current_time > 0 {
-                sleep(Duration::from_millis(current_time));
-            }
-
-            match is_play.load(Ordering::Relaxed) {
-                true => send(msg.press + shift),
-                false => break,
-            }
-        }
-        is_play.store(false, Ordering::Relaxed);
-    });
 }

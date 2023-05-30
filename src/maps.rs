@@ -1,8 +1,19 @@
-use rdev::Key;
+use rdev::{EventType, Key, simulate};
 
-use crate::send;
+#[inline]
+fn press(event: &EventType) {
+    if let Ok(()) = simulate(event) {
+        ()
+    }
+}
 
-pub const GEN_SHIN: fn(i32) = |key| match key {
+#[inline]
+pub fn send(key: Key) {
+    press(&EventType::KeyPress(key));
+    press(&EventType::KeyRelease(key));
+}
+
+pub const GEN: fn(i32) = |key| match key {
     24 => send(Key::KeyZ),
     26 => send(Key::KeyX),
     28 => send(Key::KeyC),
@@ -45,10 +56,10 @@ pub const GEN_SHIN: fn(i32) = |key| match key {
     91 => send(Key::KeyT),
     93 => send(Key::KeyY),
     95 => send(Key::KeyU),
-    _ => {}
+    _ => (),
 };
 
-pub const VR_CHAT: fn(i32) = |key| match key {
+pub const VR: fn(i32) = |key| match key {
     36 => send(Key::Unknown(90)),
     37 => send(Key::Unknown(188)),
     38 => send(Key::Unknown(88)),
@@ -109,5 +120,5 @@ pub const VR_CHAT: fn(i32) = |key| match key {
     93 => send(Key::Unknown(117)),
     94 => send(Key::Unknown(106)),
     95 => send(Key::Unknown(118)),
-    _ => {}
+    _ => (),
 };

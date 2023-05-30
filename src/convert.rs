@@ -1,15 +1,15 @@
-use crate::midi::KeyEvent;
-use crate::Data;
 use std::fs::File;
 use std::io::Write;
 use std::thread;
+use rfd::MessageButtons;
+use crate::midi::Midi;
 
-pub fn convert_from_midi(file_name: String, data: Data<Vec<KeyEvent>>) {
+pub fn convert_from_midi(file_name: String, midi: Midi) {
     let _ = thread::spawn(move || {
         let mut key = File::create(format!("{}.txt", file_name.to_string())).unwrap();
         let mut key_phone = File::create(format!("phone-{}.txt", file_name)).unwrap();
         let mut res = String::new();
-        for e in data.lock().unwrap().iter() {
+        for e in midi.events.lock().unwrap().iter() {
             match e.press {
                 24 => res.push('z'),
                 26 => res.push('x'),
@@ -86,5 +86,9 @@ pub fn convert_from_midi(file_name: String, data: Data<Vec<KeyEvent>>) {
             .replace("m", "-7");
         key.write(res.to_uppercase().as_bytes()).unwrap();
         key_phone.write(phone.as_bytes()).unwrap();
+        rfd::MessageDialog::new()
+            .set_description("转换成功\n请查看当前目录下的txt文本文件")
+            .set_buttons(MessageButtons::Ok)
+            .show();
     });
 }
