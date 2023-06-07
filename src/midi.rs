@@ -1,7 +1,6 @@
 use crate::maps::{GEN, VR};
 use chrono::Local;
 use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
-use once_cell::sync::Lazy;
 use portable_atomic::AtomicF64;
 use rayon::prelude::*;
 use std::path::PathBuf;
@@ -11,9 +10,9 @@ use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
 
-pub static SPEED: Lazy<Arc<AtomicF64>> = Lazy::new(|| Arc::new(AtomicF64::new(1.0)));
-pub static IS_PLAY: Lazy<Arc<AtomicBool>> = Lazy::new(|| Arc::new(AtomicBool::new(false)));
-pub static PAUSE: Lazy<Arc<AtomicBool>> = Lazy::new(|| Arc::new(AtomicBool::new(false)));
+pub static SPEED: AtomicF64 = AtomicF64::new(1.0);
+pub static IS_PLAY: AtomicBool = AtomicBool::new(false);
+pub static PAUSE: AtomicBool = AtomicBool::new(false);
 
 pub const GEN_SHIN: i32 = 0;
 pub const VR_CHAT: i32 = 1;
@@ -62,33 +61,29 @@ pub struct Iter {
 impl Iterator for Iter {
     type Item = i32;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        match self.index < self.len {
-            true => {
-                let i = self.index;
-                if PAUSE.load(Ordering::Relaxed) {
-                    loop {
-                        if !PAUSE.load(Ordering::Relaxed) {
-                            self.input_time = self.events[i].delay;
-                            self.start_time = Local::now().timestamp_millis();
-                            break;
-                        }
+        if self.index < self.len {
+            let i = self.index;
+            self.index += 1;
+            if PAUSE.load(Ordering::Relaxed) {
+                loop {
+                    if !PAUSE.load(Ordering::Relaxed) {
+                        self.input_time = self.events[i].delay;
+                        self.start_time = Local::now().timestamp_millis();
+                        break;
                     }
                 }
-                self.index += 1;
-                self.input_time += self.events[i].delay / SPEED.load(Ordering::Relaxed);
-                let playback_time = (Local::now().timestamp_millis() - self.start_time) as f64;
-                let current_time = (self.input_time - playback_time) as u64;
-                if current_time > 0 {
-                    sleep(Duration::from_millis(current_time));
-                }
-                match IS_PLAY.load(Ordering::Relaxed) {
-                    true => Some(self.events[i].press),
-                    false => None,
-                }
             }
-            false => None,
+            self.input_time += self.events[i].delay / SPEED.load(Ordering::Relaxed);
+            let playback_time = (Local::now().timestamp_millis() - self.start_time) as f64;
+            let current_time = (self.input_time - playback_time) as u64;
+            if current_time > 0 {
+                sleep(Duration::from_millis(current_time));
+            }
+            return Some(self.events[i].press);
         }
+        None
     }
 }
 
@@ -107,41 +102,52 @@ pub fn init(midi: Midi) {
                 _ => 480.0,
             };
 
-            let mut raw_events = vec![];
-            smf.tracks.into_iter().for_each(|track| {
-                let mut tick = 0.0;
-                track.into_iter().for_each(|event| {
-                    tick += event.delta.as_int() as f64;
-                    raw_events.push(RawEvent {
-                        event: event.kind,
-                        tick,
-                    });
-                });
-            });
+            let mut raw_events = smf.tracks
+                .into_iter()
+                .map(|track| {
+                    let mut tick = 0.0;
+                    track
+                        .into_iter()
+                        .map(|event| {
+                            tick += event.delta.as_int() as f64;
+                            RawEvent {
+                                event: event.kind,
+                                tick,
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .flatten()
+                .collect::<Vec<_>>();
 
             raw_events.par_sort_by_key(|e| e.tick as u64);
 
             let mut tick = 0.0;
             let mut tempo = 500000.0;
-            let mut events = vec![];
-            raw_events.into_iter().for_each(|event| match event.event {
-                TrackEventKind::Meta(MetaMessage::Tempo(t)) => tempo = t.as_int() as f64,
-                TrackEventKind::Midi {
-                    message: MidiMessage::NoteOn { key, vel },
-                    ..
-                } => {
-                    if vel > 0 {
-                        let time = (event.tick - tick) * (tempo / 1000.0 / fps);
-                        tick = event.tick;
-                        events.push(Event {
-                            press: key.as_int() as i32,
-                            delay: time,
-                        });
+            *midi.events.lock().unwrap() = raw_events
+                .into_iter()
+                .filter_map(|event| match event.event {
+                    TrackEventKind::Meta(MetaMessage::Tempo(t)) => {
+                        tempo = t.as_int() as f64;
+                        None
                     }
-                }
-                _ => {}
-            });
-            *midi.events.lock().unwrap() = events;
+                    TrackEventKind::Midi {
+                        message: MidiMessage::NoteOn { key, vel },
+                        ..
+                    } => {
+                        if vel > 0 {
+                            let time = (event.tick - tick) * (tempo / 1000.0 / fps);
+                            tick = event.tick;
+                            return Some(Event {
+                                press: key.as_int() as i32,
+                                delay: time,
+                            });
+                        }
+                        None
+                    }
+                    _ => None,
+                })
+                .collect::<Vec<_>>();
         }
     });
 }
@@ -158,7 +164,10 @@ pub fn playback(midi: Midi, tuned: bool, mode: i32) {
             _ => GEN,
         };
         for i in midi.play() {
-            send(i + shift);
+            match IS_PLAY.load(Ordering::Relaxed) {
+                true => send(i + shift),
+                false => break,
+            }
         }
         IS_PLAY.store(false, Ordering::Relaxed);
     });
