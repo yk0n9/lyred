@@ -5,7 +5,7 @@ use portable_atomic::AtomicF64;
 use rayon::prelude::*;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread;
 use std::thread::sleep;
 use std::time::Duration;
@@ -13,6 +13,10 @@ use std::time::Duration;
 pub static SPEED: AtomicF64 = AtomicF64::new(1.0);
 pub static IS_PLAY: AtomicBool = AtomicBool::new(false);
 pub static PAUSE: AtomicBool = AtomicBool::new(false);
+
+pub static SPACE: AtomicBool = AtomicBool::new(false);
+pub static CTRL: AtomicBool = AtomicBool::new(false);
+pub static BACK: AtomicBool = AtomicBool::new(false);
 
 pub const GEN_SHIN: i32 = 0;
 pub const VR_CHAT: i32 = 1;
@@ -40,25 +44,26 @@ impl Midi {
     #[inline]
     pub fn play(&self) -> Iter {
         let events = self.events.lock().unwrap();
+        let len = events.len();
         Iter {
             start_time: Local::now().timestamp_millis(),
             input_time: 0.0,
-            events: events.to_vec(),
+            events,
             index: 0,
-            len: events.len(),
+            len,
         }
     }
 }
 
-pub struct Iter {
+pub struct Iter<'a> {
     start_time: i64,
     input_time: f64,
-    events: Vec<Event>,
+    events: MutexGuard<'a, Vec<Event>>,
     index: usize,
     len: usize,
 }
 
-impl Iterator for Iter {
+impl Iterator for Iter<'_> {
     type Item = i32;
 
     #[inline]

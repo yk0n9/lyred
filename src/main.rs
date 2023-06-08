@@ -1,7 +1,11 @@
 #![windows_subsystem = "windows"]
 
+use std::sync::atomic::Ordering;
+use std::thread;
 use eframe::egui::Vec2;
 use eframe::{IconData, NativeOptions};
+use rdev::{Event, EventType, Key, listen};
+use lyred::midi::{BACK, CTRL, SPACE};
 use lyred::ui::Play;
 
 fn main() {
@@ -25,5 +29,20 @@ fn run() {
         height: icon_height,
     };
     options.icon_data = Some(icon_data);
+    thread::spawn(move || {
+        listen(callback).unwrap();
+    });
     eframe::run_native("Lyred", options, Box::new(|cc| Box::new(Play::new(cc)))).unwrap();
+}
+
+fn callback(event: Event) {
+    match event.event_type {
+        EventType::KeyPress(Key::Space) => SPACE.store(true, Ordering::Relaxed),
+        EventType::KeyRelease(Key::Space) => SPACE.store(false, Ordering::Relaxed),
+        EventType::KeyPress(Key::ControlLeft) => CTRL.store(true, Ordering::Relaxed),
+        EventType::KeyRelease(Key::ControlLeft) => CTRL.store(false, Ordering::Relaxed),
+        EventType::KeyPress(Key::Backspace) => BACK.store(true, Ordering::Relaxed),
+        EventType::KeyRelease(Key::Backspace) => BACK.store(false, Ordering::Relaxed),
+        _ => {}
+    }
 }
