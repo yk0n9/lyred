@@ -12,6 +12,7 @@ use std::time::Duration;
 
 pub static SPEED: AtomicF64 = AtomicF64::new(1.0);
 pub static IS_PLAY: AtomicBool = AtomicBool::new(false);
+pub static PLAYING: AtomicBool = AtomicBool:new(false);
 pub static PAUSE: AtomicBool = AtomicBool::new(false);
 
 pub static SPACE: AtomicBool = AtomicBool::new(false);
@@ -159,6 +160,7 @@ pub fn init(midi: Midi) {
 
 pub fn playback(midi: Midi, tuned: bool, mode: i32) {
     thread::spawn(move || {
+        PLAYING.store(true, Ordering::Relaxed);
         let mut shift = 0;
         if tuned {
             shift = tune(midi.clone());
@@ -174,6 +176,7 @@ pub fn playback(midi: Midi, tuned: bool, mode: i32) {
                 false => break,
             }
         }
+        PLAYING.store(false, Ordering::Relaxed);
         IS_PLAY.store(false, Ordering::Relaxed);
     });
 }

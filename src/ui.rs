@@ -1,6 +1,6 @@
 use crate::convert::convert_from_midi;
 use crate::font::load_fonts;
-use crate::midi::{init, playback, Midi, GEN_SHIN, IS_PLAY, PAUSE, SPEED, VR_CHAT, SPACE, CTRL, BACK};
+use crate::midi::{init, playback, Midi, GEN_SHIN, IS_PLAY, PAUSE, SPEED, VR_CHAT, SPACE, CTRL, BACK, PLAYING};
 use eframe::egui::FontFamily::Proportional;
 use eframe::egui::TextStyle::*;
 use eframe::egui::{Context, FontId, Slider};
@@ -101,7 +101,7 @@ impl App for Play {
 
             if SPACE.load(Ordering::Relaxed) {
                 PAUSE.store(false, Ordering::Relaxed);
-                if !IS_PLAY.load(Ordering::Relaxed) {
+                if !IS_PLAY.load(Ordering::Relaxed) && !PLAYING.load(Ordering::Relaxed) {
                     IS_PLAY.store(true, Ordering::Relaxed);
                     playback(self.midi.clone(), self.tuned, self.mode);
                 }
