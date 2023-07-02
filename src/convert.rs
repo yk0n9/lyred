@@ -12,23 +12,22 @@ pub fn convert_from_midi(file_name: String, midi: Midi) {
         let events = midi.events.lock().unwrap();
         let mut iter = events.iter().peekable();
         while let Some(e) = iter.next() {
-            if e.delay == 0.0 {
+            if e.delay != 0.0 {
                 let mut cache = String::new();
-                cache.push('[');
                 push(&mut cache, e);
-                while let Some(e) = iter.next() {
-                    if e.delay == 0.0 {
-                        push(&mut cache, e);
-                    } else {
-                        push(&mut cache, e);
-                        cache.push_str("] ");
-                        res += &cache;
+                while let Some(e) = iter.peek() {
+                    if e.delay != 0.0 {
                         break;
                     }
+                    push(&mut cache, e);
+                    iter.next();
                 }
-            } else {
-                push(&mut res, e);
-                res.push(' ');
+                if cache.len() > 1 {
+                    res.push_str(&format!("[{}] ", cache));
+                } else {
+                    res.push_str(&cache);
+                    res.push(' ');
+                }
             }
         }
 
