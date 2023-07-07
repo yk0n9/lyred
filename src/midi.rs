@@ -108,7 +108,8 @@ pub fn init(midi: Midi) {
                 _ => 480.0,
             };
 
-            let mut raw_events = smf.tracks
+            let mut raw_events = smf
+                .tracks
                 .into_iter()
                 .map(|track| {
                     let mut tick = 0.0;
@@ -231,7 +232,7 @@ pub fn tune(midi: Midi) -> i32 {
 fn tune_offset(midi: Midi, len: f32, hit_vec: &mut Vec<f32>, offset: i32, direction: bool) {
     let mut hit_count = 0.0;
     for msg in midi.events.lock().unwrap().iter() {
-        let key = msg.press as i32 + offset;
+        let key = msg.press + offset;
         if MAP.contains(&key) {
             hit_count += 1.0;
         }

@@ -1,17 +1,18 @@
 #![windows_subsystem = "windows"]
 
-use std::sync::atomic::Ordering;
-use std::thread;
 use eframe::egui::Vec2;
 use eframe::{IconData, NativeOptions};
-use rdev::{Event, EventType, Key, listen};
 use lyred::midi::{BACK, CTRL, SPACE};
 use lyred::ui::Play;
+use rdev::{listen, Event, EventType, Key};
+use std::sync::atomic::Ordering;
+use std::thread;
 
 fn main() {
     run();
 }
 
+#[inline]
 fn run() {
     let mut options = NativeOptions {
         resizable: false,

@@ -1,6 +1,8 @@
 use crate::convert::convert_from_midi;
 use crate::font::load_fonts;
-use crate::midi::{init, playback, Midi, GEN_SHIN, IS_PLAY, PAUSE, SPEED, VR_CHAT, SPACE, CTRL, BACK, PLAYING};
+use crate::midi::{
+    init, playback, Midi, BACK, CTRL, GEN_SHIN, IS_PLAY, PAUSE, PLAYING, SPACE, SPEED, VR_CHAT,
+};
 use eframe::egui::FontFamily::Proportional;
 use eframe::egui::TextStyle::*;
 use eframe::egui::{Context, FontId, Slider};
@@ -29,7 +31,7 @@ impl Play {
             (Button, FontId::new(14.0, Proportional)),
             (Small, FontId::new(10.0, Proportional)),
         ]
-            .into();
+        .into();
         cc.egui_ctx.set_style(style);
 
         Self {

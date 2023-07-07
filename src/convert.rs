@@ -24,9 +24,11 @@ pub fn convert_from_midi(file_name: String, midi: Midi) {
                 }
                 if cache.len() > 1 {
                     res.push_str(&format!("[{}] ", cache));
-                } else {
+                } else if cache.len() == 1 {
                     res.push_str(&cache);
                     res.push(' ');
+                } else {
+                    res.push_str("\n\n");
                 }
             }
         }

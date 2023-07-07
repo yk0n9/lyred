@@ -6,7 +6,7 @@ pub mod ui;
 
 #[cfg(test)]
 mod tests {
-    use crate::midi::{init, Midi, playback};
+    use crate::midi::{init, playback, Midi};
 
     #[test]
     fn test() {
