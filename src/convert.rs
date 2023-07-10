@@ -11,6 +11,7 @@ pub fn convert_from_midi(file_name: String, midi: Midi) {
         let mut res = String::new();
         let events = midi.events.lock().unwrap();
         let mut iter = events.iter().peekable();
+        let mut count = 0;
         while let Some(e) = iter.next() {
             if e.delay != 0.0 {
                 let mut cache = String::new();
@@ -22,13 +23,24 @@ pub fn convert_from_midi(file_name: String, midi: Midi) {
                     push(&mut cache, e);
                     iter.next();
                 }
-                if cache.len() > 1 {
-                    res.push_str(&format!("[{}] ", cache));
-                } else if cache.len() == 1 {
-                    res.push_str(&cache);
-                    res.push(' ');
-                } else {
-                    res.push_str("\n\n");
+                match cache.len() {
+                    0 => count += 1,
+                    _ => {
+                        match count {
+                            0 => {}
+                            1 => res.push_str("- "),
+                            2 => res.push_str("/ "),
+                            _ => res.push_str("\n\n"),
+                        }
+                        count = 0;
+                        match cache.len() {
+                            1 => {
+                                res.push_str(&cache);
+                                res.push(' ');
+                            }
+                            _ => res.push_str(&format!("[{}] ", cache)),
+                        }
+                    }
                 }
             }
         }
