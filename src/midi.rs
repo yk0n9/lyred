@@ -1,4 +1,5 @@
 use crate::maps::{GEN, VR};
+use crate::ui::Mode;
 use chrono::Local;
 use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 use portable_atomic::AtomicF64;
@@ -18,9 +19,6 @@ pub static PAUSE: AtomicBool = AtomicBool::new(false);
 pub static SPACE: AtomicBool = AtomicBool::new(false);
 pub static CTRL: AtomicBool = AtomicBool::new(false);
 pub static BACK: AtomicBool = AtomicBool::new(false);
-
-pub const GEN_SHIN: i32 = 0;
-pub const VR_CHAT: i32 = 1;
 
 const MAP: [i32; 42] = [
     24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64,
@@ -159,7 +157,7 @@ pub fn init(midi: Midi) {
     });
 }
 
-pub fn playback(midi: Midi, tuned: bool, mode: i32) {
+pub fn playback(midi: Midi, tuned: bool, mode: Mode) {
     thread::spawn(move || {
         PLAYING.store(true, Ordering::Relaxed);
         let mut shift = 0;
@@ -167,9 +165,8 @@ pub fn playback(midi: Midi, tuned: bool, mode: i32) {
             shift = tune(midi.clone());
         }
         let send = match mode {
-            GEN_SHIN => GEN,
-            VR_CHAT => VR,
-            _ => GEN,
+            Mode::GenShin => GEN,
+            Mode::VRChat => VR,
         };
         for i in midi.play() {
             match IS_PLAY.load(Ordering::Relaxed) {

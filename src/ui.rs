@@ -1,8 +1,6 @@
 use crate::convert::convert_from_midi;
 use crate::font::load_fonts;
-use crate::midi::{
-    init, playback, Midi, BACK, CTRL, GEN_SHIN, IS_PLAY, PAUSE, PLAYING, SPACE, SPEED, VR_CHAT,
-};
+use crate::midi::{init, playback, Midi, BACK, CTRL, IS_PLAY, PAUSE, PLAYING, SPACE, SPEED};
 use eframe::egui::FontFamily::Proportional;
 use eframe::egui::TextStyle::*;
 use eframe::egui::{Context, FontId, Slider};
@@ -14,8 +12,14 @@ pub struct Play {
     midi: Midi,
     tuned: bool,
     speed: f64,
-    mode: i32,
+    mode: Mode,
     state: String,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum Mode {
+    GenShin,
+    VRChat,
 }
 
 impl Play {
@@ -38,7 +42,7 @@ impl Play {
             midi: Midi::new(),
             tuned: false,
             speed: 1.0,
-            mode: 0,
+            mode: Mode::GenShin,
             state: format!("已停止"),
         }
     }
@@ -70,8 +74,8 @@ impl App for Play {
             ui.separator();
             ui.label("选择模式");
             ui.horizontal(|ui| {
-                ui.radio_value(&mut self.mode, GEN_SHIN, "GenShin");
-                ui.radio_value(&mut self.mode, VR_CHAT, "VRChat-中文吧");
+                ui.radio_value(&mut self.mode, Mode::GenShin, "GenShin");
+                ui.radio_value(&mut self.mode, Mode::VRChat, "VRChat-中文吧");
             });
             ui.separator();
             ui.horizontal(|ui| {
