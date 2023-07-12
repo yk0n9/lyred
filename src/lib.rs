@@ -7,12 +7,13 @@ pub mod ui;
 #[cfg(test)]
 mod tests {
     use crate::midi::{init, playback, Midi};
+    use crate::ui::Mode;
 
     #[test]
     fn test() {
         let mid = Midi::new();
         init(mid.clone());
 
-        playback(mid.clone(), false, 0);
+        playback(mid.clone(), false, Mode::GenShin);
     }
 }
