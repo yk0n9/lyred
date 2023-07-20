@@ -1,6 +1,5 @@
-use crate::convert::convert_from_midi;
 use crate::font::load_fonts;
-use crate::midi::{init, playback, Midi, BACK, CTRL, IS_PLAY, PAUSE, PLAYING, SPACE, SPEED};
+use crate::midi::{Midi, BACK, CTRL, IS_PLAY, PAUSE, PLAYING, SPACE, SPEED};
 use eframe::egui::FontFamily::Proportional;
 use eframe::egui::TextStyle::*;
 use eframe::egui::{Context, FontId, Slider};
@@ -59,12 +58,12 @@ impl App for Play {
                 if ui.button("打开").clicked() {
                     IS_PLAY.store(false, Ordering::Relaxed);
                     PAUSE.store(false, Ordering::Relaxed);
-                    init(self.midi.clone());
+                    self.midi.init();
                 }
                 if ui.button("从MIDI转换").clicked() {
-                    if let Some(path) = self.midi.file_name.lock().unwrap().as_ref() {
+                    if let Some(path) = self.midi.clone().file_name.lock().unwrap().as_ref() {
                         let name = path.file_name().unwrap().to_string_lossy().into_owned();
-                        convert_from_midi(name, self.midi.clone());
+                        self.midi.convert_from_midi(name);
                     }
                 }
             });
@@ -109,7 +108,7 @@ impl App for Play {
                 PAUSE.store(false, Ordering::Relaxed);
                 if !IS_PLAY.load(Ordering::Relaxed) && !PLAYING.load(Ordering::Relaxed) {
                     IS_PLAY.store(true, Ordering::Relaxed);
-                    playback(self.midi.clone(), self.tuned, self.mode);
+                    self.midi.playback(self.tuned, self.mode);
                 }
             }
             if CTRL.load(Ordering::Relaxed) {
