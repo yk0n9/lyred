@@ -5,11 +5,12 @@ use std::io::Write;
 
 impl Midi {
     pub fn convert_from_midi(&self, file_name: String) {
-        self.pool.install(move || {
+        let mid = self.clone();
+        self.pool.spawn(move || {
             let mut key = File::create(format!("{}.txt", file_name.to_string())).unwrap();
             let mut key_phone = File::create(format!("phone-{}.txt", file_name)).unwrap();
             let mut res = String::new();
-            let events = self.events.lock().unwrap();
+            let events = mid.events.lock().unwrap();
             let mut iter = events.iter().peekable();
             let mut count = 0;
             while let Some(e) = iter.next() {

@@ -6,7 +6,6 @@ use lyred::midi::{BACK, CTRL, SPACE};
 use lyred::ui::Play;
 use rdev::{listen, Event, EventType, Key};
 use std::sync::atomic::Ordering;
-use std::thread;
 
 fn main() {
     run();
@@ -30,7 +29,7 @@ fn run() {
         height: icon_height,
     };
     options.icon_data = Some(icon_data);
-    thread::spawn(move || {
+    rayon::spawn(move || {
         listen(callback).unwrap();
     });
     eframe::run_native("Lyred", options, Box::new(|cc| Box::new(Play::new(cc)))).unwrap();

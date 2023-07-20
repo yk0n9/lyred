@@ -60,12 +60,13 @@ impl Midi {
     }
 
     pub fn init(&self) {
-        self.pool.install(move || {
+        let mid = self.clone();
+        self.pool.spawn(move || {
             if let Some(path) = rfd::FileDialog::new()
                 .add_filter("MIDI File", &["mid"])
                 .pick_file()
             {
-                *self.file_name.lock().unwrap() = Some(path.clone());
+                *mid.file_name.lock().unwrap() = Some(path.clone());
 
                 let file = std::fs::read(path).unwrap();
                 let smf = Smf::parse(&file).unwrap();
@@ -97,7 +98,7 @@ impl Midi {
 
                 let mut tick = 0.0;
                 let mut tempo = 500000.0;
-                *self.events.lock().unwrap() = raw_events
+                *mid.events.lock().unwrap() = raw_events
                     .into_iter()
                     .filter_map(|event| match event.event {
                         TrackEventKind::Meta(MetaMessage::Tempo(t)) => {
@@ -126,17 +127,18 @@ impl Midi {
     }
 
     pub fn playback(&self, tuned: bool, mode: Mode) {
-        self.pool.install(move || {
+        let mid = self.clone();
+        self.pool.spawn(move || {
             PLAYING.store(true, Ordering::Relaxed);
             let mut shift = 0;
             if tuned {
-                shift = tune(self.events.clone());
+                shift = tune(mid.events.clone());
             }
             let send = match mode {
                 Mode::GenShin => GEN,
                 Mode::VRChat => VR,
             };
-            for i in self.play() {
+            for i in mid.play() {
                 match IS_PLAY.load(Ordering::Relaxed) {
                     true => send(i + shift),
                     false => break,
