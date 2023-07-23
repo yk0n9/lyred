@@ -47,15 +47,30 @@ impl Midi {
     }
 
     #[inline]
-    fn play(&self) -> Iter {
+    fn play<F: Fn(i32)>(&self, f: F) {
         let events = self.events.lock().unwrap();
-        let len = events.len();
-        Iter {
-            start_time: Local::now().timestamp_millis(),
-            input_time: 0.0,
-            events,
-            index: 0,
-            len,
+        let mut start_time = Local::now().timestamp_millis();
+        let mut input_time = 0.0;
+        for e in events.iter(){
+            if PAUSE.load(Ordering::Relaxed) {
+                loop {
+                    if !PAUSE.load(Ordering::Relaxed) {
+                        input_time = e.delay;
+                        start_time = Local::now().timestamp_millis();
+                        break;
+                    }
+                }
+            }
+            input_time += e.delay / SPEED.load(Ordering::Relaxed);
+            let playback_time = (Local::now().timestamp_millis() - start_time) as f64;
+            let current_time = (input_time - playback_time) as u64;
+            if current_time > 0 {
+                sleep(Duration::from_millis(current_time));
+            }
+            match IS_PLAY.load(Ordering::Relaxed) {
+                true => f(e.press),
+                false => break,
+            }
         }
     }
 
@@ -138,12 +153,9 @@ impl Midi {
                 Mode::GenShin => GEN,
                 Mode::VRChat => VR,
             };
-            for i in mid.play() {
-                match IS_PLAY.load(Ordering::Relaxed) {
-                    true => send(i + shift),
-                    false => break,
-                }
-            }
+            mid.play(|key| {
+                send(key + shift);
+            });
             PLAYING.store(false, Ordering::Relaxed);
             IS_PLAY.store(false, Ordering::Relaxed);
         });
