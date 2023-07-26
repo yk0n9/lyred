@@ -1,15 +1,17 @@
-use crate::maps::{GEN, VR};
-use crate::ui::Mode;
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread::sleep;
+use std::time::Duration;
+
 use chrono::Local;
 use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 use portable_atomic::AtomicF64;
 use rayon::prelude::*;
 use rayon::ThreadPool;
-use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard};
-use std::thread::sleep;
-use std::time::Duration;
+
+use crate::maps::{GEN, VR};
+use crate::ui::Mode;
 
 pub static SPEED: AtomicF64 = AtomicF64::new(1.0);
 pub static IS_PLAY: AtomicBool = AtomicBool::new(false);
@@ -159,43 +161,6 @@ impl Midi {
             PLAYING.store(false, Ordering::Relaxed);
             IS_PLAY.store(false, Ordering::Relaxed);
         });
-    }
-}
-
-pub struct Iter<'a> {
-    start_time: i64,
-    input_time: f64,
-    events: MutexGuard<'a, Vec<Event>>,
-    index: usize,
-    len: usize,
-}
-
-impl Iterator for Iter<'_> {
-    type Item = i32;
-
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.index < self.len {
-            let i = self.index;
-            self.index += 1;
-            if PAUSE.load(Ordering::Relaxed) {
-                loop {
-                    if !PAUSE.load(Ordering::Relaxed) {
-                        self.input_time = self.events[i].delay;
-                        self.start_time = Local::now().timestamp_millis();
-                        break;
-                    }
-                }
-            }
-            self.input_time += self.events[i].delay / SPEED.load(Ordering::Relaxed);
-            let playback_time = (Local::now().timestamp_millis() - self.start_time) as f64;
-            let current_time = (self.input_time - playback_time) as u64;
-            if current_time > 0 {
-                sleep(Duration::from_millis(current_time));
-            }
-            return Some(self.events[i].press);
-        }
-        None
     }
 }
 
