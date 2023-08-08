@@ -10,7 +10,7 @@ use portable_atomic::AtomicF64;
 use rayon::prelude::*;
 use rayon::ThreadPool;
 
-use crate::maps::{GEN, VR};
+use crate::maps::{gen, vr};
 use crate::ui::Mode;
 
 pub static SPEED: AtomicF64 = AtomicF64::new(1.0);
@@ -152,8 +152,8 @@ impl Midi {
                 shift = tune(mid.events.clone());
             }
             let send = match mode {
-                Mode::GenShin => GEN,
-                Mode::VRChat => VR,
+                Mode::GenShin => gen,
+                Mode::VRChat => vr,
             };
             mid.play(|key| {
                 send(key + shift);
