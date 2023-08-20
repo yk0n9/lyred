@@ -1,18 +1,20 @@
 use crate::font::load_fonts;
-use crate::midi::{Midi, BACK, CTRL, IS_PLAY, PAUSE, PLAYING, SPACE, SPEED};
+use crate::midi::{Midi, IS_PLAY, PAUSE, PLAYING, SPEED};
 use eframe::egui::FontFamily::Proportional;
 use eframe::egui::TextStyle::*;
 use eframe::egui::{Context, FontId, Slider};
 use eframe::{egui, App, CreationContext, Frame};
 use std::sync::atomic::Ordering;
+use windows_hotkeys::get_global_keystate;
+use windows_hotkeys::keys::VKey;
 
 #[derive(Debug, Clone)]
-pub struct Play {
+pub struct Play<'a> {
     midi: Midi,
     tuned: bool,
     speed: f64,
     mode: Mode,
-    state: String,
+    state: &'a str,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -21,7 +23,7 @@ pub enum Mode {
     VRChat,
 }
 
-impl Play {
+impl Play<'_> {
     pub fn new(cc: &CreationContext) -> Self {
         load_fonts(&cc.egui_ctx);
         let mut style = (*cc.egui_ctx.style()).clone();
@@ -34,7 +36,7 @@ impl Play {
             (Button, FontId::new(14.0, Proportional)),
             (Small, FontId::new(10.0, Proportional)),
         ]
-        .into();
+            .into();
         cc.egui_ctx.set_style(style);
 
         Self {
@@ -42,12 +44,12 @@ impl Play {
             tuned: false,
             speed: 1.0,
             mode: Mode::GenShin,
-            state: format!("已停止"),
+            state: "已停止",
         }
     }
 }
 
-impl App for Play {
+impl App for Play<'_> {
     fn update(&mut self, ctx: &Context, _: &mut Frame) {
         ctx.request_repaint();
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -61,14 +63,13 @@ impl App for Play {
                     self.midi.init();
                 }
                 if ui.button("从MIDI转换").clicked() {
-                    if let Some(path) = self.midi.clone().file_name.lock().unwrap().as_ref() {
-                        let name = path.file_name().unwrap().to_string_lossy().into_owned();
-                        self.midi.convert_from_midi(name);
+                    if let Some(name) = self.midi.clone().name.lock().unwrap().as_ref() {
+                        self.midi.convert_from_midi(name.to_string());
                     }
                 }
             });
-            if let Some(path) = self.midi.clone().file_name.lock().unwrap().as_ref() {
-                ui.label(&format!("当前文件: {}", path.to_str().unwrap()));
+            if let Some(name) = self.midi.clone().name.lock().unwrap().as_ref() {
+                ui.label(&format!("当前文件: {}", name));
             }
             ui.separator();
             ui.label("选择模式");
@@ -98,36 +99,36 @@ impl App for Play {
             });
             ui.checkbox(&mut self.tuned, "开启自动调音");
             ui.separator();
-            ui.label(&self.state);
+            ui.label(self.state);
             ui.separator();
             ui.label("按下Space键开始播放 | 继续播放");
             ui.label("按下Backspace键暂停播放");
             ui.label("按下Ctrl键停止播放");
 
-            if SPACE.load(Ordering::Relaxed) {
+            if get_global_keystate(VKey::Space) {
                 PAUSE.store(false, Ordering::Relaxed);
-                if !IS_PLAY.load(Ordering::Relaxed) && !PLAYING.load(Ordering::Relaxed) {
+                if !PLAYING.load(Ordering::Relaxed) {
                     IS_PLAY.store(true, Ordering::Relaxed);
                     self.midi.playback(self.tuned, self.mode);
                 }
             }
-            if CTRL.load(Ordering::Relaxed) {
+            if get_global_keystate(VKey::Control) {
                 PAUSE.store(false, Ordering::Relaxed);
                 IS_PLAY.store(false, Ordering::Relaxed);
             }
-            if BACK.load(Ordering::Relaxed) {
+            if get_global_keystate(VKey::Back) {
                 if !PAUSE.load(Ordering::Relaxed) {
                     PAUSE.store(true, Ordering::Relaxed);
                 }
             }
             if IS_PLAY.load(Ordering::Relaxed) && !PAUSE.load(Ordering::Relaxed) {
-                self.state = format!("播放中...");
+                self.state = "播放中...";
             }
             if !IS_PLAY.load(Ordering::Relaxed) {
-                self.state = format!("已停止");
+                self.state = "已停止";
             }
-            if PAUSE.load(Ordering::Relaxed) && IS_PLAY.load(Ordering::Relaxed) {
-                self.state = format!("已暂停");
+            if IS_PLAY.load(Ordering::Relaxed) && PAUSE.load(Ordering::Relaxed) {
+                self.state = "已暂停";
             }
         });
     }

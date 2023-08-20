@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::sleep;
@@ -18,18 +17,18 @@ pub static IS_PLAY: AtomicBool = AtomicBool::new(false);
 pub static PLAYING: AtomicBool = AtomicBool::new(false);
 pub static PAUSE: AtomicBool = AtomicBool::new(false);
 
-pub static SPACE: AtomicBool = AtomicBool::new(false);
-pub static CTRL: AtomicBool = AtomicBool::new(false);
-pub static BACK: AtomicBool = AtomicBool::new(false);
-
-static MAP: &'static [i32] = &[
-    24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64,
-    65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95,
+const MAP: &'static [i32] = &[
+    24, 26, 28, 29, 31, 33, 35,
+    36, 38, 40, 41, 43, 45, 47,
+    48, 50, 52, 53, 55, 57, 59,
+    60, 62, 64, 65, 67, 69, 71,
+    72, 74, 76, 77, 79, 81, 83,
+    84, 86, 88, 89, 91, 93, 95,
 ];
 
 #[derive(Debug, Clone)]
 pub struct Midi {
-    pub file_name: Arc<Mutex<Option<PathBuf>>>,
+    pub name: Arc<Mutex<Option<String>>>,
     pub events: Arc<Mutex<Vec<Event>>>,
     pub pool: Arc<ThreadPool>,
 }
@@ -42,18 +41,16 @@ impl Midi {
             .build()
             .unwrap();
         Midi {
-            file_name: Arc::new(Mutex::new(None)),
+            name: Arc::new(Mutex::new(None)),
             events: Arc::new(Mutex::new(vec![])),
             pool: Arc::new(pool),
         }
     }
 
-    #[inline]
     fn play<F: Fn(i32)>(&self, f: F) {
-        let events = self.events.lock().unwrap();
         let mut start_time = Local::now().timestamp_millis();
         let mut input_time = 0.0;
-        for e in events.iter(){
+        for e in self.events.lock().unwrap().iter() {
             if PAUSE.load(Ordering::Relaxed) {
                 loop {
                     if !PAUSE.load(Ordering::Relaxed) {
@@ -79,11 +76,11 @@ impl Midi {
     pub fn init(&self) {
         let mid = self.clone();
         self.pool.spawn(move || {
-            if let Some(path) = rfd::FileDialog::new()
+            if let Some(ref path) = rfd::FileDialog::new()
                 .add_filter("MIDI File", &["mid"])
                 .pick_file()
             {
-                *mid.file_name.lock().unwrap() = Some(path.clone());
+                *mid.name.lock().unwrap() = Some(path.file_name().unwrap().to_string_lossy().into_owned());
 
                 let file = std::fs::read(path).unwrap();
                 let smf = Smf::parse(&file).unwrap();
@@ -144,9 +141,9 @@ impl Midi {
     }
 
     pub fn playback(&self, tuned: bool, mode: Mode) {
+        PLAYING.store(true, Ordering::Relaxed);
         let mid = self.clone();
         self.pool.spawn(move || {
-            PLAYING.store(true, Ordering::Relaxed);
             let mut shift = 0;
             if tuned {
                 shift = tune(mid.events.clone());
