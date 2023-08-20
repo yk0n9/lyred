@@ -1,5 +1,5 @@
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -18,12 +18,8 @@ pub static PLAYING: AtomicBool = AtomicBool::new(false);
 pub static PAUSE: AtomicBool = AtomicBool::new(false);
 
 const MAP: &'static [i32] = &[
-    24, 26, 28, 29, 31, 33, 35,
-    36, 38, 40, 41, 43, 45, 47,
-    48, 50, 52, 53, 55, 57, 59,
-    60, 62, 64, 65, 67, 69, 71,
-    72, 74, 76, 77, 79, 81, 83,
-    84, 86, 88, 89, 91, 93, 95,
+    24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64,
+    65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95,
 ];
 
 #[derive(Debug, Clone)]
@@ -80,7 +76,8 @@ impl Midi {
                 .add_filter("MIDI File", &["mid"])
                 .pick_file()
             {
-                *mid.name.lock().unwrap() = Some(path.file_name().unwrap().to_string_lossy().into_owned());
+                *mid.name.lock().unwrap() =
+                    Some(path.file_name().unwrap().to_string_lossy().into_owned());
 
                 let file = std::fs::read(path).unwrap();
                 let smf = Smf::parse(&file).unwrap();

@@ -1,4 +1,4 @@
-use rdev::{EventType, Key, simulate};
+use rdev::{simulate, EventType, Key};
 
 #[inline(always)]
 fn send(key: Key) {
