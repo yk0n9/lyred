@@ -36,7 +36,7 @@ impl Play<'_> {
             (Button, FontId::new(14.0, Proportional)),
             (Small, FontId::new(10.0, Proportional)),
         ]
-            .into();
+        .into();
         cc.egui_ctx.set_style(style);
 
         Self {
