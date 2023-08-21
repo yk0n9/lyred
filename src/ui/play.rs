@@ -13,11 +13,11 @@ use crate::ui::View;
 #[derive(Debug, Clone)]
 pub struct Play<'a> {
     pub midi: Midi,
-    pub tuned: bool,
     pub speed: f64,
     pub mode: Mode,
     pub state: &'a str,
     pub tracks_enable: bool,
+    pub offset: i32,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -44,11 +44,11 @@ impl Play<'_> {
 
         Self {
             midi: Midi::new(),
-            tuned: false,
             speed: 1.0,
             mode: Mode::GenShin,
             state: "已停止",
             tracks_enable: false,
+            offset: 0,
         }
     }
 }
@@ -63,6 +63,7 @@ impl View for Play<'_> {
                 IS_PLAY.store(false, Ordering::Relaxed);
                 PAUSE.store(false, Ordering::Relaxed);
                 self.midi.clone().init();
+                self.offset = 0;
             }
             if ui.button("从MIDI转换").clicked() {
                 if let Some(name) = self.midi.clone().name.lock().unwrap().as_ref() {
@@ -99,22 +100,31 @@ impl View for Play<'_> {
                 SPEED.store(self.speed, Ordering::Relaxed);
             }
         });
-        ui.horizontal(|ui| {
-            ui.checkbox(&mut self.tuned, "开启自动调音");
-            ui.toggle_value(&mut self.tracks_enable, "音轨");
-        });
+        ui.separator();
+        if ui.button("向上调音").clicked() {
+            self.offset += 1;
+            self.midi.hit_rate.store(self.midi.detection(self.offset), Ordering::Relaxed);
+        }
+        if ui.button("向下调音").clicked() {
+            self.offset -= 1;
+            self.midi.hit_rate.store(self.midi.detection(self.offset), Ordering::Relaxed);
+        }
+        ui.label(format!("当前偏移量: {} 命中率: {:.2}%", self.offset, self.midi.hit_rate.load(Ordering::Relaxed) * 100.0));
+        ui.toggle_value(&mut self.tracks_enable, "音轨");
         ui.separator();
         ui.label(self.state);
         ui.separator();
         ui.label("按下Space键开始播放 | 继续播放");
         ui.label("按下Backspace键暂停播放");
         ui.label("按下Ctrl键停止播放");
+        ui.label("");
+        ui.label("注意: 每±12个偏移量为一个八度");
 
         if SPACE.load(Ordering::Relaxed) {
             PAUSE.store(false, Ordering::Relaxed);
             if !PLAYING.load(Ordering::Relaxed) {
                 IS_PLAY.store(true, Ordering::Relaxed);
-                self.midi.clone().playback(self.tuned, self.mode);
+                self.midi.clone().playback(self.offset, self.mode);
             }
         }
         if CTRL.load(Ordering::Relaxed) {

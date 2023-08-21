@@ -27,9 +27,9 @@ pub struct Midi {
     pub name: Arc<Mutex<Option<String>>>,
     pub events: Arc<Mutex<Vec<Event>>>,
     pub fps: Arc<AtomicF64>,
-    pub tempo: Arc<Mutex<Option<f64>>>,
     pub tracks: Arc<Mutex<Vec<Vec<RawEvent>>>>,
     pub track_num: Arc<Mutex<Vec<(bool, usize)>>>,
+    pub hit_rate: Arc<AtomicF64>,
 }
 
 impl Midi {
@@ -39,9 +39,9 @@ impl Midi {
             name: Arc::new(Mutex::new(None)),
             events: Arc::new(Mutex::new(vec![])),
             fps: Arc::new(Default::default()),
-            tempo: Arc::new(Mutex::new(None)),
             tracks: Arc::new(Mutex::new(vec![])),
             track_num: Arc::new(Mutex::new(vec![])),
+            hit_rate: Arc::new(Default::default()),
         }
     }
 
@@ -83,7 +83,6 @@ impl Midi {
                 let file = std::fs::read(path).unwrap();
                 let smf = Smf::parse(&file).unwrap();
                 let len = smf.tracks.len();
-                *self.tempo.lock().unwrap() = None;
                 self.fps.store(match smf.header.timing {
                     Timing::Metrical(fps) => fps.as_int() as f64,
                     _ => 480.0,
@@ -99,10 +98,6 @@ impl Midi {
                             .filter_map(|e| {
                                 let event = match e.kind {
                                     TrackEventKind::Meta(MetaMessage::Tempo(t)) => {
-                                        let mut tempo = self.tempo.lock().unwrap();
-                                        if tempo.is_none() {
-                                            *tempo = Some(t.as_int() as f64);
-                                        }
                                         ValidEvent::Tempo(t.as_int() as f64)
                                     }
                                     TrackEventKind::Midi {
@@ -131,6 +126,7 @@ impl Midi {
                 let enables = vec![true; len].into_iter();
                 let range = (0..len).collect::<Vec<_>>().into_iter();
                 *self.track_num.lock().unwrap() = enables.zip(range).collect();
+                self.hit_rate.store(self.detection(0), Ordering::Relaxed);
             }
         });
     }
@@ -172,7 +168,7 @@ impl Midi {
             .collect::<Vec<_>>();
     }
 
-    pub fn playback(self, tuned: bool, mode: Mode) {
+    pub fn playback(self, offset: i32, mode: Mode) {
         PLAYING.store(true, Ordering::Relaxed);
         POOL.spawn(move || {
             let tracks = self.track_num.lock().unwrap().iter().filter_map(|(enable, index)| {
@@ -183,20 +179,28 @@ impl Midi {
                 }
             }).collect::<Vec<_>>();
             self.merge_tracks(&tracks);
-            let mut shift = 0;
-            if tuned {
-                shift = tune(self.events.clone());
-            }
             let send = match mode {
                 Mode::GenShin => gen,
                 Mode::VRChat => vr,
             };
             self.play(|key| {
-                send(key + shift);
+                send(key + offset);
             });
             PLAYING.store(false, Ordering::Relaxed);
             IS_PLAY.store(false, Ordering::Relaxed);
         });
+    }
+
+    pub fn detection(&self, offset: i32) -> f64 {
+        let events = self.events.lock().unwrap();
+        let all = events.len() as f64;
+        let mut count = 0;
+        events.iter().for_each(|e| {
+            if MAP.contains(&(e.press + offset)) {
+                count += 1;
+            }
+        });
+        count as f64 / all
     }
 }
 
@@ -217,72 +221,4 @@ pub struct RawEvent {
 pub struct Event {
     pub press: i32,
     pub delay: f64,
-}
-
-fn tune(events: Arc<Mutex<Vec<Event>>>) -> i32 {
-    let len = events.lock().unwrap().len() as f32;
-    let mut up_hit = vec![];
-    let mut down_hit = vec![];
-    let mut up_max = 0.0;
-    let mut down_max = 0.0;
-    let mut up_shift = 0;
-    let mut down_shift = 0;
-
-    rayon::join(
-        || {
-            tune_offset(events.clone(), len, &mut up_hit, 0, true);
-            for (i, x) in up_hit.into_iter().enumerate() {
-                if x > up_max {
-                    up_max = x;
-                    up_shift = i as i32;
-                }
-            }
-        },
-        || {
-            tune_offset(events.clone(), len, &mut down_hit, 0, false);
-            for (i, x) in down_hit.into_iter().enumerate() {
-                if x > down_max {
-                    down_max = x;
-                    down_shift = i as i32;
-                }
-            }
-        },
-    );
-
-    if up_shift > down_shift {
-        return up_shift;
-    }
-    -down_shift
-}
-
-fn tune_offset(
-    events: Arc<Mutex<Vec<Event>>>,
-    len: f32,
-    hit_vec: &mut Vec<f32>,
-    offset: i32,
-    direction: bool,
-) {
-    let mut hit_count = 0.0;
-    for msg in events.lock().unwrap().iter() {
-        let key = msg.press + offset;
-        if MAP.contains(&key) {
-            hit_count += 1.0;
-        }
-    }
-    let hit = hit_count / len;
-    hit_vec.push(hit);
-    match direction {
-        true => {
-            if offset > 21 {
-                return;
-            }
-            tune_offset(events, len, hit_vec, offset + 1, true);
-        }
-        false => {
-            if offset < -21 {
-                return;
-            }
-            tune_offset(events, len, hit_vec, offset - 1, false);
-        }
-    }
 }
