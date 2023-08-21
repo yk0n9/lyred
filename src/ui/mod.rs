@@ -1,4 +1,4 @@
-use eframe::{App, Frame};
+use eframe::{App, egui, Frame};
 use eframe::egui::{Context, Ui};
 
 use crate::ui::play::Play;
@@ -17,6 +17,13 @@ pub trait Module: View {
 
 impl App for Play<'_> {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
-        self.show(ctx, &mut true);
+        ctx.request_repaint();
+        egui::CentralPanel::default()
+            .show(ctx, |ui| self.ui(ui));
+        egui::Window::new("音轨").open(&mut self.tracks_enable).show(ctx, |ui| {
+            for (enable, index) in self.midi.track_num.lock().unwrap().iter_mut() {
+                ui.checkbox(enable, format!("Track {}", index));
+            }
+        });
     }
 }

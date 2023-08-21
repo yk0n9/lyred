@@ -1,5 +1,5 @@
 use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -29,7 +29,7 @@ pub struct Midi {
     pub fps: Arc<AtomicF64>,
     pub tempo: Arc<Mutex<Option<f64>>>,
     pub tracks: Arc<Mutex<Vec<Vec<RawEvent>>>>,
-    pub track_num: Arc<AtomicUsize>,
+    pub track_num: Arc<Mutex<Vec<(bool, usize)>>>,
 }
 
 impl Midi {
@@ -41,7 +41,7 @@ impl Midi {
             fps: Arc::new(Default::default()),
             tempo: Arc::new(Mutex::new(None)),
             tracks: Arc::new(Mutex::new(vec![])),
-            track_num: Arc::new(Default::default()),
+            track_num: Arc::new(Mutex::new(vec![])),
         }
     }
 
@@ -83,7 +83,6 @@ impl Midi {
                 let file = std::fs::read(path).unwrap();
                 let smf = Smf::parse(&file).unwrap();
                 let len = smf.tracks.len();
-                self.track_num.store(len, Ordering::Relaxed);
                 *self.tempo.lock().unwrap() = None;
                 self.fps.store(match smf.header.timing {
                     Timing::Metrical(fps) => fps.as_int() as f64,
@@ -129,25 +128,30 @@ impl Midi {
                     .collect::<Vec<_>>();
 
                 self.merge_tracks(&(0..len).collect::<Vec<_>>());
+                let enables = vec![true; len].into_iter();
+                let range = (0..len).collect::<Vec<_>>().into_iter();
+                *self.track_num.lock().unwrap() = enables.zip(range).collect();
             }
         });
     }
 
     pub fn merge_tracks(&self, indices: &[usize]) {
         let mut current = vec![];
-        for i in indices {
-            for event in self.tracks.lock().unwrap()[*i].iter() {
-                current.push(*event);
+        for (index, events) in self.tracks.lock().unwrap().iter().enumerate() {
+            for event in events {
+                if indices.contains(&index) {
+                    current.push(*event);
+                } else {
+                    if let ValidEvent::Tempo(_) = event.event {
+                        current.push(*event);
+                    }
+                }
             }
         }
         current.par_sort_by_key(|e| e.tick as usize);
 
         let mut tick = 0.0;
-        let mut tempo = if let Some(tempo) = *self.tempo.lock().unwrap() {
-            tempo
-        } else {
-            500000.0
-        };
+        let mut tempo = 500000.0;
         *self.events.lock().unwrap() = current
             .into_iter()
             .filter_map(|event| match event.event {
@@ -171,6 +175,14 @@ impl Midi {
     pub fn playback(self, tuned: bool, mode: Mode) {
         PLAYING.store(true, Ordering::Relaxed);
         POOL.spawn(move || {
+            let tracks = self.track_num.lock().unwrap().iter().filter_map(|(enable, index)| {
+                if *enable {
+                    Some(*index)
+                } else {
+                    None
+                }
+            }).collect::<Vec<_>>();
+            self.merge_tracks(&tracks);
             let mut shift = 0;
             if tuned {
                 shift = tune(self.events.clone());

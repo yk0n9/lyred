@@ -1,23 +1,23 @@
 use std::sync::atomic::Ordering;
 
-use eframe::{CreationContext, egui};
-use eframe::egui::{Context, FontId, Slider, Ui};
+use eframe::CreationContext;
+use eframe::egui::{FontId, Slider, Ui};
 use eframe::egui::FontFamily::Proportional;
 use eframe::egui::TextStyle::*;
-use windows_hotkeys::get_global_keystate;
-use windows_hotkeys::keys::VKey;
 
 use crate::font::load_fonts;
 use crate::midi::{IS_PLAY, Midi, PAUSE, PLAYING, SPEED};
-use crate::ui::{Module, View};
+use crate::{BACK, CTRL, SPACE};
+use crate::ui::View;
 
 #[derive(Debug, Clone)]
 pub struct Play<'a> {
-    midi: Midi,
-    tuned: bool,
-    speed: f64,
-    mode: Mode,
-    state: &'a str,
+    pub midi: Midi,
+    pub tuned: bool,
+    pub speed: f64,
+    pub mode: Mode,
+    pub state: &'a str,
+    pub tracks_enable: bool,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -31,7 +31,7 @@ impl Play<'_> {
         load_fonts(&cc.egui_ctx);
         let mut style = (*cc.egui_ctx.style()).clone();
         style.text_styles = [
-            (Heading, FontId::new(30.0, Proportional)),
+            (Heading, FontId::new(20.0, Proportional)),
             (Name("Heading2".into()), FontId::new(25.0, Proportional)),
             (Name("Context".into()), FontId::new(23.0, Proportional)),
             (Body, FontId::new(18.0, Proportional)),
@@ -48,17 +48,8 @@ impl Play<'_> {
             speed: 1.0,
             mode: Mode::GenShin,
             state: "已停止",
+            tracks_enable: false,
         }
-    }
-}
-
-impl Module for Play<'_> {
-    fn name(&self) -> &'static str {
-        "Lyred"
-    }
-
-    fn show(&mut self, ctx: &Context, _open: &mut bool) {
-        egui::CentralPanel::default().show(ctx, |ui| self.ui(ui));
     }
 }
 
@@ -108,7 +99,10 @@ impl View for Play<'_> {
                 SPEED.store(self.speed, Ordering::Relaxed);
             }
         });
-        ui.checkbox(&mut self.tuned, "开启自动调音");
+        ui.horizontal(|ui| {
+            ui.checkbox(&mut self.tuned, "开启自动调音");
+            ui.toggle_value(&mut self.tracks_enable, "音轨");
+        });
         ui.separator();
         ui.label(self.state);
         ui.separator();
@@ -116,18 +110,18 @@ impl View for Play<'_> {
         ui.label("按下Backspace键暂停播放");
         ui.label("按下Ctrl键停止播放");
 
-        if get_global_keystate(VKey::Space) {
+        if SPACE.load(Ordering::Relaxed) {
             PAUSE.store(false, Ordering::Relaxed);
             if !PLAYING.load(Ordering::Relaxed) {
                 IS_PLAY.store(true, Ordering::Relaxed);
                 self.midi.clone().playback(self.tuned, self.mode);
             }
         }
-        if get_global_keystate(VKey::Control) {
+        if CTRL.load(Ordering::Relaxed) {
             PAUSE.store(false, Ordering::Relaxed);
             IS_PLAY.store(false, Ordering::Relaxed);
         }
-        if get_global_keystate(VKey::Back) {
+        if BACK.load(Ordering::Relaxed) {
             if !PAUSE.load(Ordering::Relaxed) {
                 PAUSE.store(true, Ordering::Relaxed);
             }
