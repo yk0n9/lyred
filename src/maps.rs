@@ -1,7 +1,7 @@
 use rdev::{EventType, Key, simulate};
 
 #[inline(always)]
-pub fn send(key: Key) {
+fn send(key: Key) {
     let _ = simulate(&EventType::KeyPress(key));
     let _ = simulate(&EventType::KeyRelease(key));
 }

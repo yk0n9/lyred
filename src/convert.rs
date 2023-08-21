@@ -1,16 +1,18 @@
-use crate::midi::{Event, Midi};
-use rfd::MessageButtons;
 use std::fs::File;
 use std::io::Write;
 
+use rfd::MessageButtons;
+
+use crate::midi::{Event, Midi};
+use crate::POOL;
+
 impl Midi {
-    pub fn convert_from_midi(&self, file_name: String) {
-        let mid = self.clone();
-        self.pool.spawn(move || {
-            let mut key = File::create(format!("{}.txt", file_name.to_string())).unwrap();
-            let mut key_phone = File::create(format!("phone-{}.txt", file_name)).unwrap();
+    pub fn convert_from_midi(self, name: String) {
+        POOL.spawn(move || {
+            let mut key = File::create(format!("{}.txt", &name)).unwrap();
+            let mut key_phone = File::create(format!("phone-{}.txt", &name)).unwrap();
             let mut res = String::new();
-            let events = mid.events.lock().unwrap();
+            let events = self.events.lock().unwrap();
             let mut iter = events.iter().peekable();
             let mut count = 0;
             while let Some(e) = iter.next() {
