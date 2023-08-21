@@ -1,5 +1,5 @@
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -7,9 +7,9 @@ use chrono::Local;
 use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 use portable_atomic::AtomicF64;
 use rayon::prelude::*;
-use rayon::ThreadPool;
 
 use crate::maps::{gen, vr};
+use crate::POOL;
 use crate::ui::Mode;
 
 pub static SPEED: AtomicF64 = AtomicF64::new(1.0);
@@ -26,20 +26,22 @@ const MAP: &'static [i32] = &[
 pub struct Midi {
     pub name: Arc<Mutex<Option<String>>>,
     pub events: Arc<Mutex<Vec<Event>>>,
-    pub pool: Arc<ThreadPool>,
+    pub fps: Arc<AtomicF64>,
+    pub tempo: Arc<Mutex<Option<f64>>>,
+    pub tracks: Arc<Mutex<Vec<Vec<RawEvent>>>>,
+    pub track_num: Arc<AtomicUsize>,
 }
 
 impl Midi {
     #[inline]
     pub fn new() -> Self {
-        let pool = rayon::ThreadPoolBuilder::new()
-            .num_threads(2)
-            .build()
-            .unwrap();
         Midi {
             name: Arc::new(Mutex::new(None)),
             events: Arc::new(Mutex::new(vec![])),
-            pool: Arc::new(pool),
+            fps: Arc::new(Default::default()),
+            tempo: Arc::new(Mutex::new(None)),
+            tracks: Arc::new(Mutex::new(vec![])),
+            track_num: Arc::new(Default::default()),
         }
     }
 
@@ -69,87 +71,115 @@ impl Midi {
         }
     }
 
-    pub fn init(&self) {
-        let mid = self.clone();
-        self.pool.spawn(move || {
+    pub fn init(self) {
+        POOL.spawn(move || {
             if let Some(ref path) = rfd::FileDialog::new()
                 .add_filter("MIDI File", &["mid"])
                 .pick_file()
             {
-                *mid.name.lock().unwrap() =
+                *self.name.lock().unwrap() =
                     Some(path.file_name().unwrap().to_string_lossy().into_owned());
 
                 let file = std::fs::read(path).unwrap();
                 let smf = Smf::parse(&file).unwrap();
-                let fps = match smf.header.timing {
+                let len = smf.tracks.len();
+                self.track_num.store(len, Ordering::Relaxed);
+                *self.tempo.lock().unwrap() = None;
+                self.fps.store(match smf.header.timing {
                     Timing::Metrical(fps) => fps.as_int() as f64,
                     _ => 480.0,
-                };
+                }, Ordering::Relaxed);
 
-                let mut raw_events = smf
+                *self.tracks.lock().unwrap() = smf
                     .tracks
                     .into_iter()
                     .map(|track| {
                         let mut tick = 0.0;
                         track
                             .into_iter()
-                            .map(|event| {
-                                tick += event.delta.as_int() as f64;
-                                RawEvent {
-                                    event: event.kind,
+                            .filter_map(|e| {
+                                let event = match e.kind {
+                                    TrackEventKind::Meta(MetaMessage::Tempo(t)) => {
+                                        let mut tempo = self.tempo.lock().unwrap();
+                                        if tempo.is_none() {
+                                            *tempo = Some(t.as_int() as f64);
+                                        }
+                                        ValidEvent::Tempo(t.as_int() as f64)
+                                    }
+                                    TrackEventKind::Midi {
+                                        message: MidiMessage::NoteOn { key, vel },
+                                        ..
+                                    } => {
+                                        if vel > 0 {
+                                            ValidEvent::Note(key.as_int() as i32)
+                                        } else {
+                                            ValidEvent::Other
+                                        }
+                                    }
+                                    _ => ValidEvent::Other,
+                                };
+                                tick += e.delta.as_int() as f64;
+                                Some(RawEvent {
+                                    event,
                                     tick,
-                                }
+                                })
                             })
                             .collect::<Vec<_>>()
                     })
-                    .flatten()
                     .collect::<Vec<_>>();
 
-                raw_events.par_sort_by_key(|e| e.tick as u64);
-
-                let mut tick = 0.0;
-                let mut tempo = 500000.0;
-                *mid.events.lock().unwrap() = raw_events
-                    .into_iter()
-                    .filter_map(|event| match event.event {
-                        TrackEventKind::Meta(MetaMessage::Tempo(t)) => {
-                            tempo = t.as_int() as f64;
-                            None
-                        }
-                        TrackEventKind::Midi {
-                            message: MidiMessage::NoteOn { key, vel },
-                            ..
-                        } => {
-                            if vel > 0 {
-                                let time = (event.tick - tick) * (tempo / 1000.0 / fps);
-                                tick = event.tick;
-                                return Some(Event {
-                                    press: key.as_int() as i32,
-                                    delay: time,
-                                });
-                            }
-                            None
-                        }
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
+                self.merge_tracks(&(0..len).collect::<Vec<_>>());
             }
         });
     }
 
-    pub fn playback(&self, tuned: bool, mode: Mode) {
+    pub fn merge_tracks(&self, indices: &[usize]) {
+        let mut current = vec![];
+        for i in indices {
+            for event in self.tracks.lock().unwrap()[*i].iter() {
+                current.push(*event);
+            }
+        }
+        current.par_sort_by_key(|e| e.tick as usize);
+
+        let mut tick = 0.0;
+        let mut tempo = if let Some(tempo) = *self.tempo.lock().unwrap() {
+            tempo
+        } else {
+            500000.0
+        };
+        *self.events.lock().unwrap() = current
+            .into_iter()
+            .filter_map(|event| match event.event {
+                ValidEvent::Note(press) => {
+                    let delay = (event.tick - tick) * (tempo / 1000.0 / self.fps.load(Ordering::Relaxed));
+                    tick = event.tick;
+                    Some(Event {
+                        press,
+                        delay,
+                    })
+                }
+                ValidEvent::Tempo(t) => {
+                    tempo = t;
+                    None
+                }
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+    }
+
+    pub fn playback(self, tuned: bool, mode: Mode) {
         PLAYING.store(true, Ordering::Relaxed);
-        let mid = self.clone();
-        self.pool.spawn(move || {
+        POOL.spawn(move || {
             let mut shift = 0;
             if tuned {
-                shift = tune(mid.events.clone());
+                shift = tune(self.events.clone());
             }
             let send = match mode {
                 Mode::GenShin => gen,
                 Mode::VRChat => vr,
             };
-            mid.play(|key| {
+            self.play(|key| {
                 send(key + shift);
             });
             PLAYING.store(false, Ordering::Relaxed);
@@ -158,12 +188,20 @@ impl Midi {
     }
 }
 
-struct RawEvent<'a> {
-    event: TrackEventKind<'a>,
+#[derive(Debug, Copy, Clone)]
+enum ValidEvent {
+    Note(i32),
+    Tempo(f64),
+    Other,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct RawEvent {
+    event: ValidEvent,
     tick: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct Event {
     pub press: i32,
     pub delay: f64,

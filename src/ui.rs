@@ -60,11 +60,11 @@ impl App for Play<'_> {
                 if ui.button("打开").clicked() {
                     IS_PLAY.store(false, Ordering::Relaxed);
                     PAUSE.store(false, Ordering::Relaxed);
-                    self.midi.init();
+                    self.midi.clone().init();
                 }
                 if ui.button("从MIDI转换").clicked() {
                     if let Some(name) = self.midi.clone().name.lock().unwrap().as_ref() {
-                        self.midi.convert_from_midi(name.to_string());
+                        self.midi.clone().convert_from_midi(name.to_string());
                     }
                 }
             });
@@ -109,7 +109,7 @@ impl App for Play<'_> {
                 PAUSE.store(false, Ordering::Relaxed);
                 if !PLAYING.load(Ordering::Relaxed) {
                     IS_PLAY.store(true, Ordering::Relaxed);
-                    self.midi.playback(self.tuned, self.mode);
+                    self.midi.clone().playback(self.tuned, self.mode);
                 }
             }
             if get_global_keystate(VKey::Control) {
