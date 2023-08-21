@@ -1,8 +1,9 @@
 #![windows_subsystem = "windows"]
 
-use eframe::egui::Vec2;
 use eframe::{IconData, NativeOptions};
-use lyred::ui::Play;
+use eframe::egui::Vec2;
+
+use lyred::ui::play::Play;
 
 fn main() {
     run();

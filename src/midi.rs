@@ -10,7 +10,7 @@ use rayon::prelude::*;
 
 use crate::maps::{gen, vr};
 use crate::POOL;
-use crate::ui::Mode;
+use crate::ui::play::Mode;
 
 pub static SPEED: AtomicF64 = AtomicF64::new(1.0);
 pub static IS_PLAY: AtomicBool = AtomicBool::new(false);

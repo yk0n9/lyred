@@ -1,7 +1,9 @@
-use crate::midi::{Event, Midi};
-use rfd::MessageButtons;
 use std::fs::File;
 use std::io::Write;
+
+use rfd::MessageButtons;
+
+use crate::midi::{Event, Midi};
 use crate::POOL;
 
 impl Midi {
