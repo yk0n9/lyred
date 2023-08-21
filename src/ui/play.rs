@@ -63,7 +63,6 @@ impl Module for Play<'_> {
 }
 
 impl View for Play<'_> {
-    #[inline]
     fn ui(&mut self, ui: &mut Ui) {
         ui.vertical_centered(|ui| ui.heading("Lyred"));
         ui.separator();
@@ -91,7 +90,7 @@ impl View for Play<'_> {
         });
         ui.separator();
         ui.horizontal(|ui| {
-            ui.add(Slider::new(&mut self.speed, 0.1..=5.0).prefix("播放速度: "));
+            ui.add(Slider::new(&mut self.speed, 0.1..=5.0).prefix("播放速度:"));
             if ui.button("还原").clicked() {
                 self.speed = 1.0;
             }
