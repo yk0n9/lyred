@@ -103,6 +103,13 @@ impl View for Play<'_> {
             }
         });
         ui.separator();
+        ui.horizontal(|ui| {
+            ui.label(format!("偏移量: {} 命中率: {:.2}%", self.offset, self.midi.hit_rate.load(Ordering::Relaxed) * 100.0));
+            if ui.button("还原偏移量").clicked() {
+                self.offset = 0;
+                self.midi.hit_rate.store(self.midi.detection(self.offset), Ordering::Relaxed);
+            }
+        });
         if ui.button("向上调音").clicked() {
             self.offset += 1;
             self.midi.hit_rate.store(self.midi.detection(self.offset), Ordering::Relaxed);
@@ -111,8 +118,7 @@ impl View for Play<'_> {
             self.offset -= 1;
             self.midi.hit_rate.store(self.midi.detection(self.offset), Ordering::Relaxed);
         }
-        ui.label(format!("当前偏移量: {} 命中率: {:.2}%", self.offset, self.midi.hit_rate.load(Ordering::Relaxed) * 100.0));
-        ui.toggle_value(&mut self.tracks_enable, "音轨");
+        ui.toggle_value(&mut self.tracks_enable, "音轨列表");
         ui.separator();
         ui.label(self.state);
         ui.separator();

@@ -127,8 +127,8 @@ impl Midi {
                 let enables = vec![true; len].into_iter();
                 let range = (0..len).collect::<Vec<_>>().into_iter();
                 *self.track_num.lock().unwrap() = enables.zip(range).collect();
-                self.hit_rate.store(self.detection(0), Ordering::Relaxed);
             }
+            self.hit_rate.store(self.detection(0), Ordering::Relaxed);
         });
     }
 
