@@ -46,9 +46,10 @@ impl Midi {
     }
 
     fn play<F: Fn(i32)>(&self, f: F) {
+        let events = self.events.lock().unwrap().clone();
         let mut start_time = Local::now().timestamp_millis();
         let mut input_time = 0.0;
-        for e in self.events.lock().unwrap().iter() {
+        for e in events.into_iter() {
             if PAUSE.load(Ordering::Relaxed) {
                 loop {
                     if !PAUSE.load(Ordering::Relaxed) {
@@ -171,14 +172,6 @@ impl Midi {
     pub fn playback(self, offset: i32, mode: Mode) {
         PLAYING.store(true, Ordering::Relaxed);
         POOL.spawn(move || {
-            let tracks = self.track_num.lock().unwrap().iter().filter_map(|(enable, index)| {
-                if *enable {
-                    Some(*index)
-                } else {
-                    None
-                }
-            }).collect::<Vec<_>>();
-            self.merge_tracks(&tracks);
             let send = match mode {
                 Mode::GenShin => gen,
                 Mode::VRChat => vr,

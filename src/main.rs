@@ -1,9 +1,11 @@
 #![windows_subsystem = "windows"]
 
 use std::sync::atomic::Ordering;
+
 use eframe::{IconData, NativeOptions};
 use eframe::egui::Vec2;
 use rdev::{Event, EventType};
+
 use lyred::{BACK, CTRL, POOL, SPACE};
 use lyred::ui::play::Play;
 

@@ -5,9 +5,9 @@ use eframe::egui::{FontId, Slider, Ui};
 use eframe::egui::FontFamily::Proportional;
 use eframe::egui::TextStyle::*;
 
+use crate::{BACK, CTRL, SPACE};
 use crate::font::load_fonts;
 use crate::midi::{IS_PLAY, Midi, PAUSE, PLAYING, SPEED};
-use crate::{BACK, CTRL, SPACE};
 use crate::ui::View;
 
 #[derive(Debug, Clone)]
@@ -18,6 +18,7 @@ pub struct Play<'a> {
     pub state: &'a str,
     pub tracks_enable: bool,
     pub offset: i32,
+    pub notify_merge: bool,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -49,6 +50,7 @@ impl Play<'_> {
             state: "已停止",
             tracks_enable: false,
             offset: 0,
+            notify_merge: false,
         }
     }
 }
