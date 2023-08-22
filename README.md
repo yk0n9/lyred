@@ -5,11 +5,13 @@
 # Features
 
 - Graphical user interface
-- Auto tuning
+- ~~Auto tuning~~
+- Manual tuning
 - Thread operations
 - Multi-mapping
+- Split track playback
 
-Currently supported mappings: **Genshin**, **VRChat**
+Currently supported mappings: **Genshin**, **VRChat-中文吧**
 
 # Getting Started
 
