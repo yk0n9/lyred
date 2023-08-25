@@ -1,6 +1,4 @@
-use std::fs::File;
-use std::io::Write;
-
+use std::fs;
 use rfd::MessageButtons;
 
 use crate::midi::{Event, Midi};
@@ -9,8 +7,6 @@ use crate::POOL;
 impl Midi {
     pub fn convert_from_midi(self, name: String) {
         POOL.spawn(move || {
-            let mut key = File::create(format!("{}.txt", &name)).unwrap();
-            let mut key_phone = File::create(format!("phone-{}.txt", &name)).unwrap();
             let mut res = String::new();
             let events = self.events.lock().unwrap();
             let mut iter = events.iter().peekable();
@@ -70,8 +66,8 @@ impl Midi {
                 .replace("b", "-5")
                 .replace("n", "-6")
                 .replace("m", "-7");
-            key.write(res.to_uppercase().as_bytes()).unwrap();
-            key_phone.write(phone.as_bytes()).unwrap();
+            fs::write(format!("{}.txt", name), res.as_bytes()).unwrap();
+            fs::write(format!("phone-{}.txt", name), phone.as_bytes()).unwrap();
             rfd::MessageDialog::new()
                 .set_description("转换成功\n请查看当前目录下的txt文本文件")
                 .set_buttons(MessageButtons::Ok)
