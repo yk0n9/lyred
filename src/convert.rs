@@ -67,7 +67,7 @@ impl Midi {
                 .replace("n", "-6")
                 .replace("m", "-7");
             if let (Ok(_), Ok(_)) = (
-                fs::write(format!("{}.txt", name), res.as_bytes()),
+                fs::write(format!("{}.txt", name), res.to_uppercase().as_bytes()),
                 fs::write(format!("phone-{}.txt", name), phone.as_bytes())
             ) {
                 rfd::MessageDialog::new()
