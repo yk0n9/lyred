@@ -46,7 +46,7 @@ impl Midi {
     }
 
     fn play<F: Fn(i32)>(&self, f: F) {
-        let events = self.events.lock().unwrap().clone();
+        let events = self.events.lock().unwrap().to_vec();
         let mut start_time = Local::now().timestamp_millis();
         let mut input_time = 0.0;
         for e in events.into_iter() {

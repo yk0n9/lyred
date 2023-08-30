@@ -66,12 +66,20 @@ impl Midi {
                 .replace("b", "-5")
                 .replace("n", "-6")
                 .replace("m", "-7");
-            fs::write(format!("{}.txt", name), res.as_bytes()).unwrap();
-            fs::write(format!("phone-{}.txt", name), phone.as_bytes()).unwrap();
-            rfd::MessageDialog::new()
-                .set_description("转换成功\n请查看当前目录下的txt文本文件")
-                .set_buttons(MessageButtons::Ok)
-                .show();
+            if let (Ok(_), Ok(_)) = (
+                fs::write(format!("{}.txt", name), res.as_bytes()),
+                fs::write(format!("phone-{}.txt", name), phone.as_bytes())
+            ) {
+                rfd::MessageDialog::new()
+                    .set_description("转换成功\n请查看当前目录下的txt文本文件")
+                    .set_buttons(MessageButtons::Ok)
+                    .show();
+            } else {
+                rfd::MessageDialog::new()
+                    .set_description("转换失败")
+                    .set_buttons(MessageButtons::Ok)
+                    .show();
+            }
         });
     }
 }
