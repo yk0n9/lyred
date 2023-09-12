@@ -96,7 +96,7 @@ impl Midi {
                         let mut tick = 0.0;
                         track
                             .into_iter()
-                            .filter_map(|e| {
+                            .map(|e| {
                                 let event = match e.kind {
                                     TrackEventKind::Meta(MetaMessage::Tempo(t)) => {
                                         ValidEvent::Tempo(t.as_int() as f64)
@@ -114,10 +114,10 @@ impl Midi {
                                     _ => ValidEvent::Other,
                                 };
                                 tick += e.delta.as_int() as f64;
-                                Some(RawEvent {
+                                RawEvent {
                                     event,
                                     tick,
-                                })
+                                }
                             })
                             .collect::<Vec<_>>()
                     })
