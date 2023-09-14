@@ -17,6 +17,7 @@ pub static IS_PLAY: AtomicBool = AtomicBool::new(false);
 pub static PLAYING: AtomicBool = AtomicBool::new(false);
 pub static PAUSE: AtomicBool = AtomicBool::new(false);
 
+const DEFAULT_TEMPO_MPQ: f64 = 500000.0;
 const MAP: &'static [i32] = &[
     24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64,
     65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95,
@@ -56,8 +57,7 @@ impl Midi {
                 start_time = Local::now().timestamp_millis();
             }
             input_time += e.delay / SPEED.load(Ordering::Relaxed);
-            let playback_time = (Local::now().timestamp_millis() - start_time) as f64;
-            let current_time = (input_time - playback_time) as u64;
+            let current_time = (input_time - (Local::now().timestamp_millis() - start_time) as f64) as u64;
             if current_time > 0 {
                 sleep(Duration::from_millis(current_time));
             }
@@ -144,12 +144,12 @@ impl Midi {
         current.par_sort_by_key(|e| e.tick as usize);
 
         let mut tick = 0.0;
-        let mut tempo = 500000.0;
+        let mut tempo = DEFAULT_TEMPO_MPQ;
         *self.events.lock().unwrap() = current
             .into_iter()
             .filter_map(|event| match event.event {
                 ValidEvent::Note(press) => {
-                    let delay = (event.tick - tick) * (tempo / 1000.0 / self.fps.load(Ordering::Relaxed));
+                    let delay = Self::tick2millis(event.tick - tick, tempo, self.fps.load(Ordering::Relaxed));
                     tick = event.tick;
                     Some(Event {
                         press,
@@ -190,6 +190,23 @@ impl Midi {
             }
         });
         count as f64 / all
+    }
+
+    /// 1. The difference in milliseconds between two events
+    /// 2. The time in milliseconds this event was in track
+    #[inline]
+    fn tick2millis(tick: f64, tempo_mpq: f64, fps: f64) -> f64 {
+        tick * tempo_mpq / fps / 1000.0
+    }
+
+    /// 1. MPQ-Tempo to BPM-Tempo
+    /// 2. BPM-Tempo to MPQ-Tempo
+    #[inline]
+    fn convert_tempo(mut tempo: f64) -> f64 {
+        if tempo <= 0.0 {
+            tempo = 1.0;
+        }
+        60000000.0 / tempo
     }
 }
 
