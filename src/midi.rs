@@ -18,6 +18,7 @@ pub static PLAYING: AtomicBool = AtomicBool::new(false);
 pub static PAUSE: AtomicBool = AtomicBool::new(false);
 
 const DEFAULT_TEMPO_MPQ: f64 = 500000.0;
+const DEFAULT_FPS: f64 = 480.0;
 const MAP: &'static [i32] = &[
     24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64,
     65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95,
@@ -82,7 +83,7 @@ impl Midi {
                 let len = smf.tracks.len();
                 self.fps.store(match smf.header.timing {
                     Timing::Metrical(fps) => fps.as_int() as f64,
-                    _ => 480.0,
+                    _ => DEFAULT_FPS,
                 }, Ordering::Relaxed);
 
                 *self.tracks.lock().unwrap() = smf
@@ -172,9 +173,7 @@ impl Midi {
                 Mode::GenShin => gen,
                 Mode::VRChat => vr,
             };
-            self.play(|key| {
-                send(key + offset);
-            });
+            self.play(|key| send(key + offset));
             PLAYING.store(false, Ordering::Relaxed);
             IS_PLAY.store(false, Ordering::Relaxed);
         });
@@ -201,6 +200,7 @@ impl Midi {
 
     /// 1. MPQ-Tempo to BPM-Tempo
     /// 2. BPM-Tempo to MPQ-Tempo
+    #[allow(dead_code)]
     #[inline]
     fn convert_tempo(mut tempo: f64) -> f64 {
         if tempo <= 0.0 {
