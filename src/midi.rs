@@ -51,13 +51,9 @@ impl Midi {
         let mut input_time = 0.0;
         for e in events.into_iter() {
             if PAUSE.load(Ordering::Relaxed) {
-                loop {
-                    if !PAUSE.load(Ordering::Relaxed) {
-                        input_time = e.delay;
-                        start_time = Local::now().timestamp_millis();
-                        break;
-                    }
-                }
+                while PAUSE.load(Ordering::Relaxed) {}
+                input_time = e.delay;
+                start_time = Local::now().timestamp_millis();
             }
             input_time += e.delay / SPEED.load(Ordering::Relaxed);
             let playback_time = (Local::now().timestamp_millis() - start_time) as f64;
