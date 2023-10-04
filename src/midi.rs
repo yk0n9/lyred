@@ -58,6 +58,7 @@ impl Midi {
                 start_time = Local::now().timestamp_millis();
             }
             input_time += e.delay / SPEED.load(Ordering::Relaxed);
+            let playback_time = (Local::now().timestamp_millis() - start_time) as f64;
             match (input_time - playback_time) as u64 {
                 current @ 1.. => sleep(Duration::from_millis(current)),
                 _ => {}
