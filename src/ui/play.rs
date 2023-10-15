@@ -11,11 +11,11 @@ use crate::midi::{IS_PLAY, Midi, PAUSE, PLAYING, SPEED};
 use crate::ui::View;
 
 #[derive(Debug, Clone)]
-pub struct Play<'a> {
+pub struct Play {
     pub midi: Midi,
     pub speed: f64,
     pub mode: Mode,
-    pub state: &'a str,
+    pub state: &'static str,
     pub tracks_enable: bool,
     pub offset: i32,
     pub notify_merge: bool,
@@ -27,7 +27,7 @@ pub enum Mode {
     VRChat,
 }
 
-impl Play<'_> {
+impl Play {
     pub fn new(cc: &CreationContext) -> Self {
         load_fonts(&cc.egui_ctx);
         let mut style = (*cc.egui_ctx.style()).clone();
@@ -55,7 +55,7 @@ impl Play<'_> {
     }
 }
 
-impl View for Play<'_> {
+impl View for Play {
     fn ui(&mut self, ui: &mut Ui) {
         ui.vertical_centered(|ui| ui.heading("Lyred"));
         ui.separator();

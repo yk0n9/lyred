@@ -11,7 +11,7 @@ pub trait View {
     fn ui(&mut self, ui: &mut Ui);
 }
 
-impl App for Play<'_> {
+impl App for Play {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         ctx.request_repaint();
         egui::CentralPanel::default()
