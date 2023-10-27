@@ -31,7 +31,7 @@ impl App for Play {
                     }
                 }).collect::<Vec<_>>();
                 self.midi.merge_tracks(&range);
-                self.midi.hit_rate.store(self.midi.detection(self.offset), Ordering::Relaxed);
+                self.midi.hit_rate.store(self.midi.detect(self.offset), Ordering::Relaxed);
                 self.notify_merge = false;
             }
         });

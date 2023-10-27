@@ -107,16 +107,16 @@ impl View for Play {
             ui.label(format!("偏移量: {} 命中率: {:.2}%", self.offset, self.midi.hit_rate.load(Ordering::Relaxed) * 100.0));
             if ui.button("还原偏移量").clicked() {
                 self.offset = 0;
-                self.midi.hit_rate.store(self.midi.detection(self.offset), Ordering::Relaxed);
+                self.midi.hit_rate.store(self.midi.detect(self.offset), Ordering::Relaxed);
             }
         });
         if ui.button("向上调音").clicked() {
             self.offset += 1;
-            self.midi.hit_rate.store(self.midi.detection(self.offset), Ordering::Relaxed);
+            self.midi.hit_rate.store(self.midi.detect(self.offset), Ordering::Relaxed);
         }
         if ui.button("向下调音").clicked() {
             self.offset -= 1;
-            self.midi.hit_rate.store(self.midi.detection(self.offset), Ordering::Relaxed);
+            self.midi.hit_rate.store(self.midi.detect(self.offset), Ordering::Relaxed);
         }
         ui.toggle_value(&mut self.tracks_enable, "音轨列表");
         ui.separator();

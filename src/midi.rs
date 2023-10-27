@@ -126,7 +126,7 @@ impl Midi {
                 let range = (0..len).collect::<Vec<_>>().into_iter();
                 *self.track_num.lock().unwrap() = enables.zip(range).collect();
             }
-            self.hit_rate.store(self.detection(0), Ordering::Relaxed);
+            self.hit_rate.store(self.detect(0), Ordering::Relaxed);
         });
     }
 
@@ -180,7 +180,7 @@ impl Midi {
         });
     }
 
-    pub fn detection(&self, offset: i32) -> f64 {
+    pub fn detect(&self, offset: i32) -> f64 {
         let events = self.events.lock().unwrap();
         let all = events.len() as f64;
         let mut count = 0;
