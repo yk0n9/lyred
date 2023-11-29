@@ -1,13 +1,14 @@
 use std::sync::atomic::Ordering;
 
-use eframe::CreationContext;
-use eframe::egui::{FontId, Slider, Ui};
 use eframe::egui::FontFamily::Proportional;
 use eframe::egui::TextStyle::*;
+use eframe::egui::{FontId, Slider, Ui};
+use eframe::CreationContext;
+use windows_hotkeys::get_global_keystate;
+use windows_hotkeys::keys::VKey;
 
-use crate::{BACK, CTRL, SPACE};
 use crate::font::load_fonts;
-use crate::midi::{IS_PLAY, Midi, PAUSE, PLAYING, SPEED};
+use crate::midi::{Midi, IS_PLAY, PAUSE, PLAYING, SPEED};
 use crate::ui::View;
 
 #[derive(Debug, Clone)]
@@ -40,7 +41,7 @@ impl Play {
             (Button, FontId::new(14.0, Proportional)),
             (Small, FontId::new(10.0, Proportional)),
         ]
-            .into();
+        .into();
         cc.egui_ctx.set_style(style);
 
         Self {
@@ -104,19 +105,29 @@ impl View for Play {
         });
         ui.separator();
         ui.horizontal(|ui| {
-            ui.label(format!("偏移量: {} 命中率: {:.2}%", self.offset, self.midi.hit_rate.load(Ordering::Relaxed) * 100.0));
+            ui.label(format!(
+                "偏移量: {} 命中率: {:.2}%",
+                self.offset,
+                self.midi.hit_rate.load(Ordering::Relaxed) * 100.0
+            ));
             if ui.button("还原偏移量").clicked() {
                 self.offset = 0;
-                self.midi.hit_rate.store(self.midi.detect(self.offset), Ordering::Relaxed);
+                self.midi
+                    .hit_rate
+                    .store(self.midi.detect(self.offset), Ordering::Relaxed);
             }
         });
         if ui.button("向上调音").clicked() {
             self.offset += 1;
-            self.midi.hit_rate.store(self.midi.detect(self.offset), Ordering::Relaxed);
+            self.midi
+                .hit_rate
+                .store(self.midi.detect(self.offset), Ordering::Relaxed);
         }
         if ui.button("向下调音").clicked() {
             self.offset -= 1;
-            self.midi.hit_rate.store(self.midi.detect(self.offset), Ordering::Relaxed);
+            self.midi
+                .hit_rate
+                .store(self.midi.detect(self.offset), Ordering::Relaxed);
         }
         ui.toggle_value(&mut self.tracks_enable, "音轨列表");
         ui.separator();
@@ -128,18 +139,18 @@ impl View for Play {
         ui.label("");
         ui.label("注意: 每±12个偏移量为一个八度");
 
-        if SPACE.load(Ordering::Relaxed) {
+        if get_global_keystate(VKey::Space) {
             PAUSE.store(false, Ordering::Relaxed);
             if !PLAYING.load(Ordering::Relaxed) {
                 IS_PLAY.store(true, Ordering::Relaxed);
                 self.midi.clone().playback(self.offset, self.mode);
             }
         }
-        if CTRL.load(Ordering::Relaxed) {
+        if get_global_keystate(VKey::Control) {
             PAUSE.store(false, Ordering::Relaxed);
             IS_PLAY.store(false, Ordering::Relaxed);
         }
-        if BACK.load(Ordering::Relaxed) {
+        if get_global_keystate(VKey::Back) {
             if !PAUSE.load(Ordering::Relaxed) {
                 PAUSE.store(true, Ordering::Relaxed);
             }

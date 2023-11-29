@@ -1,5 +1,5 @@
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -8,9 +8,9 @@ use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 use portable_atomic::AtomicF64;
 use rayon::prelude::*;
 
-use crate::maps::{gen, vr};
-use crate::POOL;
+use crate::maps::{gen_shin, vr_chat};
 use crate::ui::play::Mode;
+use crate::POOL;
 
 pub static SPEED: AtomicF64 = AtomicF64::new(1.0);
 pub static IS_PLAY: AtomicBool = AtomicBool::new(false);
@@ -82,10 +82,13 @@ impl Midi {
                 let file = std::fs::read(path).unwrap();
                 let smf = Smf::parse(&file).unwrap();
                 let len = smf.tracks.len();
-                self.fps.store(match smf.header.timing {
-                    Timing::Metrical(fps) => fps.as_int() as f64,
-                    _ => DEFAULT_FPS,
-                }, Ordering::Relaxed);
+                self.fps.store(
+                    match smf.header.timing {
+                        Timing::Metrical(fps) => fps.as_int() as f64,
+                        _ => DEFAULT_FPS,
+                    },
+                    Ordering::Relaxed,
+                );
 
                 *self.tracks.lock().unwrap() = smf
                     .tracks
@@ -112,10 +115,7 @@ impl Midi {
                                     _ => ValidEvent::Other,
                                 };
                                 tick += e.delta.as_int() as f64;
-                                RawEvent {
-                                    event,
-                                    tick,
-                                }
+                                RawEvent { event, tick }
                             })
                             .collect::<Vec<_>>()
                     })
@@ -151,12 +151,13 @@ impl Midi {
             .into_iter()
             .filter_map(|event| match event.event {
                 ValidEvent::Note(press) => {
-                    let delay = Self::tick2millis(event.tick - tick, tempo, self.fps.load(Ordering::Relaxed));
+                    let delay = Self::tick2millis(
+                        event.tick - tick,
+                        tempo,
+                        self.fps.load(Ordering::Relaxed),
+                    );
                     tick = event.tick;
-                    Some(Event {
-                        press,
-                        delay,
-                    })
+                    Some(Event { press, delay })
                 }
                 ValidEvent::Tempo(t) => {
                     tempo = t;
@@ -171,8 +172,8 @@ impl Midi {
         PLAYING.store(true, Ordering::Relaxed);
         POOL.spawn(move || {
             let send = match mode {
-                Mode::GenShin => gen,
-                Mode::VRChat => vr,
+                Mode::GenShin => gen_shin,
+                Mode::VRChat => vr_chat,
             };
             self.play(|key| send(key + offset));
             PLAYING.store(false, Ordering::Relaxed);
