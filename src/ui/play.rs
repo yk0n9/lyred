@@ -3,13 +3,14 @@ use std::sync::atomic::Ordering;
 use eframe::egui::FontFamily::Proportional;
 use eframe::egui::TextStyle::*;
 use eframe::egui::{FontId, Slider, Ui};
-use eframe::CreationContext;
-use windows::Win32::UI::Input::KeyboardAndMouse::{VK_BACK, VK_CONTROL, VK_SPACE};
+use eframe::{egui, CreationContext};
+use windows::Win32::UI::Input::KeyboardAndMouse::{VIRTUAL_KEY, VK_BACK, VK_CONTROL, VK_SPACE};
 
 use crate::font::load_fonts;
 use crate::maps::is_pressed;
 use crate::midi::{Midi, IS_PLAY, PAUSE, PLAYING, SPEED};
 use crate::ui::View;
+use crate::util::{vk_display, KEY_CODE};
 
 #[derive(Debug, Clone)]
 pub struct Play {
@@ -20,6 +21,24 @@ pub struct Play {
     pub tracks_enable: bool,
     pub offset: i32,
     pub notify_merge: bool,
+    pub function_keys: FunctionKeys,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct FunctionKeys {
+    pub play: VIRTUAL_KEY,
+    pub pause: VIRTUAL_KEY,
+    pub stop: VIRTUAL_KEY,
+}
+
+impl Default for FunctionKeys {
+    fn default() -> Self {
+        Self {
+            play: VK_SPACE,
+            pause: VK_BACK,
+            stop: VK_CONTROL,
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -52,6 +71,7 @@ impl Play {
             tracks_enable: false,
             offset: 0,
             notify_merge: false,
+            function_keys: FunctionKeys::default(),
         }
     }
 }
@@ -133,28 +153,83 @@ impl View for Play {
         ui.separator();
         ui.label(self.state);
         ui.separator();
-        ui.label("按下Space键开始播放 | 继续播放");
-        ui.label("按下Backspace键暂停播放");
-        ui.label("按下Ctrl键停止播放");
+        ui.horizontal(|ui| {
+            ui.label("按下");
+            egui::ComboBox::from_id_source(0)
+                .selected_text(vk_display(self.function_keys.play))
+                .show_ui(ui, |ui| {
+                    ui.style_mut().wrap = Some(false);
+                    KEY_CODE
+                        .iter()
+                        .filter(|k| {
+                            **k != self.function_keys.pause.0 as u8
+                                && **k != self.function_keys.stop.0 as u8
+                        })
+                        .for_each(|key| {
+                            let vk = VIRTUAL_KEY(*key as u16);
+                            ui.selectable_value(&mut self.function_keys.play, vk, vk_display(vk));
+                        });
+                });
+            ui.label("键开始播放 | 继续播放");
+        });
+        ui.horizontal(|ui| {
+            ui.label("按下");
+            egui::ComboBox::from_id_source(1)
+                .selected_text(vk_display(self.function_keys.pause))
+                .show_ui(ui, |ui| {
+                    ui.style_mut().wrap = Some(false);
+                    KEY_CODE
+                        .iter()
+                        .filter(|k| {
+                            **k != self.function_keys.play.0 as u8
+                                && **k != self.function_keys.stop.0 as u8
+                        })
+                        .for_each(|key| {
+                            let vk = VIRTUAL_KEY(*key as u16);
+                            ui.selectable_value(&mut self.function_keys.pause, vk, vk_display(vk));
+                        });
+                });
+            ui.label("键暂停播放");
+        });
+        ui.horizontal(|ui| {
+            ui.label("按下");
+            egui::ComboBox::from_id_source(2)
+                .selected_text(vk_display(self.function_keys.stop))
+                .show_ui(ui, |ui| {
+                    ui.style_mut().wrap = Some(false);
+                    KEY_CODE
+                        .iter()
+                        .filter(|k| {
+                            **k != self.function_keys.play.0 as u8
+                                && **k != self.function_keys.pause.0 as u8
+                        })
+                        .for_each(|key| {
+                            let vk = VIRTUAL_KEY(*key as u16);
+                            ui.selectable_value(&mut self.function_keys.stop, vk, vk_display(vk));
+                        });
+                });
+            ui.label("键停止播放");
+        });
         ui.label("");
         ui.label("注意: 每±12个偏移量为一个八度");
 
-        if is_pressed(VK_SPACE) {
+        if is_pressed(self.function_keys.play) {
             PAUSE.store(false, Ordering::Relaxed);
             if !PLAYING.load(Ordering::Relaxed) {
                 IS_PLAY.store(true, Ordering::Relaxed);
                 self.midi.clone().playback(self.offset, self.mode);
             }
         }
-        if is_pressed(VK_CONTROL) {
+        if is_pressed(self.function_keys.stop) {
             PAUSE.store(false, Ordering::Relaxed);
             IS_PLAY.store(false, Ordering::Relaxed);
         }
-        if is_pressed(VK_BACK) {
+        if is_pressed(self.function_keys.pause) {
             if !PAUSE.load(Ordering::Relaxed) {
                 PAUSE.store(true, Ordering::Relaxed);
             }
         }
+
         if IS_PLAY.load(Ordering::Relaxed) && !PAUSE.load(Ordering::Relaxed) {
             self.state = "播放中...";
         }
