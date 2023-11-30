@@ -4,10 +4,10 @@ use eframe::egui::FontFamily::Proportional;
 use eframe::egui::TextStyle::*;
 use eframe::egui::{FontId, Slider, Ui};
 use eframe::CreationContext;
-use windows_hotkeys::get_global_keystate;
-use windows_hotkeys::keys::VKey;
+use windows::Win32::UI::Input::KeyboardAndMouse::{VK_BACK, VK_CONTROL, VK_SPACE};
 
 use crate::font::load_fonts;
+use crate::maps::is_pressed;
 use crate::midi::{Midi, IS_PLAY, PAUSE, PLAYING, SPEED};
 use crate::ui::View;
 
@@ -139,18 +139,18 @@ impl View for Play {
         ui.label("");
         ui.label("注意: 每±12个偏移量为一个八度");
 
-        if get_global_keystate(VKey::Space) {
+        if is_pressed(VK_SPACE) {
             PAUSE.store(false, Ordering::Relaxed);
             if !PLAYING.load(Ordering::Relaxed) {
                 IS_PLAY.store(true, Ordering::Relaxed);
                 self.midi.clone().playback(self.offset, self.mode);
             }
         }
-        if get_global_keystate(VKey::Control) {
+        if is_pressed(VK_CONTROL) {
             PAUSE.store(false, Ordering::Relaxed);
             IS_PLAY.store(false, Ordering::Relaxed);
         }
-        if get_global_keystate(VKey::Back) {
+        if is_pressed(VK_BACK) {
             if !PAUSE.load(Ordering::Relaxed) {
                 PAUSE.store(true, Ordering::Relaxed);
             }
