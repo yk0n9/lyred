@@ -22,6 +22,13 @@ pub struct Play {
     pub offset: i32,
     pub notify_merge: bool,
     pub function_keys: FunctionKeys,
+    pub speed_status: SpeedStatus,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct SpeedStatus {
+    pub add: bool,
+    pub sub: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -72,6 +79,7 @@ impl Play {
             offset: 0,
             notify_merge: false,
             function_keys: FunctionKeys::default(),
+            speed_status: SpeedStatus::default(),
         }
     }
 }
@@ -112,13 +120,23 @@ impl View for Play {
         });
         SPEED.store(self.speed, Ordering::Relaxed);
         ui.horizontal(|ui| {
-            if ui.button("减速0.1x").clicked() {
+            let sub = is_pressed(VIRTUAL_KEY(189)) || is_pressed(VIRTUAL_KEY(109));
+            if !sub {
+                self.speed_status.sub = false;
+            }
+            if ui.button("减速0.1x").clicked() || sub != self.speed_status.sub {
+                self.speed_status.sub = sub;
                 if SPEED.load(Ordering::Relaxed) > 0.1 {
                     self.speed -= 0.1;
                     SPEED.store(self.speed, Ordering::Relaxed);
                 }
             }
-            if ui.button("加速0.1x").clicked() {
+            let add = is_pressed(VIRTUAL_KEY(187)) || is_pressed(VIRTUAL_KEY(107));
+            if !add {
+                self.speed_status.add = false;
+            }
+            if ui.button("加速0.1x").clicked() || add != self.speed_status.add {
+                self.speed_status.add = add;
                 self.speed += 0.1;
                 SPEED.store(self.speed, Ordering::Relaxed);
             }
@@ -153,6 +171,8 @@ impl View for Play {
         ui.separator();
         ui.label(self.state);
         ui.separator();
+        ui.label("按下 - 键减速");
+        ui.label("按下 + 键加速");
         ui.horizontal(|ui| {
             ui.label("按下");
             egui::ComboBox::from_id_source(0)
