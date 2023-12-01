@@ -133,9 +133,13 @@ fn press(vk: VIRTUAL_KEY) {
     unsafe {
         let mut input = std::mem::zeroed::<INPUT>();
         input.r#type = INPUT_KEYBOARD;
-        input.Anonymous.ki.wVk = vk;
-        input.Anonymous.ki.wScan = MapVirtualKeyA(vk.0 as u32, MAPVK_VK_TO_VSC) as u16;
-        input.Anonymous.ki.dwFlags = KEYBD_EVENT_FLAGS(0);
+        input.Anonymous.ki = KEYBDINPUT {
+            wVk: vk,
+            wScan: MapVirtualKeyA(vk.0 as u32, MAPVK_VK_TO_VSC) as u16,
+            dwFlags: KEYBD_EVENT_FLAGS(0),
+            time: 0,
+            dwExtraInfo: 0,
+        };
         SendInput(&[input], std::mem::size_of::<INPUT>() as i32);
     }
 }
@@ -145,9 +149,13 @@ fn release(vk: VIRTUAL_KEY) {
     unsafe {
         let mut input = std::mem::zeroed::<INPUT>();
         input.r#type = INPUT_KEYBOARD;
-        input.Anonymous.ki.wVk = vk;
-        input.Anonymous.ki.wScan = MapVirtualKeyA(vk.0 as u32, MAPVK_VK_TO_VSC) as u16;
-        input.Anonymous.ki.dwFlags = KEYBD_EVENT_FLAGS(2);
+        input.Anonymous.ki = KEYBDINPUT {
+            wVk: vk,
+            wScan: MapVirtualKeyA(vk.0 as u32, MAPVK_VK_TO_VSC) as u16,
+            dwFlags: KEYBD_EVENT_FLAGS(2),
+            time: 0,
+            dwExtraInfo: 0,
+        };
         SendInput(&[input], std::mem::size_of::<INPUT>() as i32);
     }
 }
