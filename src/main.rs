@@ -13,7 +13,7 @@ fn main() {
 fn run() {
     let mut options = NativeOptions {
         resizable: false,
-        initial_window_size: Some(Vec2::new(400.0, 500.0)),
+        initial_window_size: Some(Vec2::new(400.0, 600.0)),
         ..NativeOptions::default()
     };
     let icon_data = IconData::try_from_png_bytes(include_bytes!("../resources/lyre.ico")).unwrap();

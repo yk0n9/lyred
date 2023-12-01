@@ -10,7 +10,7 @@ use rayon::prelude::*;
 
 use crate::maps::{gen_shin, vr_chat};
 use crate::ui::play::Mode;
-use crate::POOL;
+use crate::{COUNT, LOCAL, POOL, TIME_SHIFT};
 
 pub static SPEED: AtomicF64 = AtomicF64::new(1.0);
 pub static IS_PLAY: AtomicBool = AtomicBool::new(false);
@@ -51,12 +51,25 @@ impl Midi {
         let events = self.events.lock().unwrap().to_vec();
         let mut start_time = Local::now().timestamp_millis();
         let mut input_time = 0.0;
-        for e in events.into_iter() {
+        let mut i = 0;
+        while i < events.len() {
+            if TIME_SHIFT.load(Ordering::Relaxed) {
+                TIME_SHIFT.store(false, Ordering::Relaxed);
+                i = LOCAL.load(Ordering::Relaxed);
+                input_time = events[i].delay;
+                start_time = Local::now().timestamp_millis();
+            } else {
+                LOCAL.store(i, Ordering::Relaxed);
+            }
+            let e = events[i];
+            i += 1;
+
             if PAUSE.load(Ordering::Relaxed) {
                 while PAUSE.load(Ordering::Relaxed) {}
                 input_time = e.delay;
                 start_time = Local::now().timestamp_millis();
             }
+
             input_time += e.delay / SPEED.load(Ordering::Relaxed);
             let playback_time = (Local::now().timestamp_millis() - start_time) as f64;
             match (input_time - playback_time) as u64 {
@@ -147,6 +160,8 @@ impl Midi {
 
         let mut tick = 0.0;
         let mut tempo = DEFAULT_TEMPO_MPQ;
+        let mut time = 0;
+        let mut count = Vec::with_capacity(current.len());
         *self.events.lock().unwrap() = current
             .into_iter()
             .filter_map(|event| match event.event {
@@ -156,6 +171,8 @@ impl Midi {
                         tempo,
                         self.fps.load(Ordering::Relaxed),
                     );
+                    time += delay as usize;
+                    count.push(time);
                     tick = event.tick;
                     Some(Event { press, delay })
                 }
@@ -166,6 +183,9 @@ impl Midi {
                 _ => None,
             })
             .collect::<Vec<_>>();
+        unsafe {
+            COUNT = count;
+        }
     }
 
     pub fn playback(self, offset: i32, mode: Mode) {
@@ -178,6 +198,7 @@ impl Midi {
             self.play(|key| send(key + offset));
             PLAYING.store(false, Ordering::Relaxed);
             IS_PLAY.store(false, Ordering::Relaxed);
+            LOCAL.store(0, Ordering::Relaxed);
         });
     }
 

@@ -11,6 +11,7 @@ use crate::maps::is_pressed;
 use crate::midi::{Midi, IS_PLAY, PAUSE, PLAYING, SPEED};
 use crate::ui::View;
 use crate::util::{vk_display, KEY_CODE};
+use crate::{COUNT, LOCAL, TIME_SHIFT};
 
 #[derive(Debug, Clone)]
 pub struct Play {
@@ -23,6 +24,7 @@ pub struct Play {
     pub notify_merge: bool,
     pub function_keys: FunctionKeys,
     pub speed_status: SpeedStatus,
+    pub progress: usize,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -80,6 +82,7 @@ impl Play {
             notify_merge: false,
             function_keys: FunctionKeys::default(),
             speed_status: SpeedStatus::default(),
+            progress: 0,
         }
     }
 }
@@ -170,6 +173,28 @@ impl View for Play {
         ui.toggle_value(&mut self.tracks_enable, "音轨列表");
         ui.separator();
         ui.label(self.state);
+        if PLAYING.load(Ordering::Relaxed) {
+            self.progress = LOCAL.load(Ordering::Relaxed);
+            unsafe {
+                if ui
+                    .add(
+                        Slider::new(&mut self.progress, 0..=COUNT.len() - 1)
+                            .show_value(false)
+                            .text(format!(
+                                "{:02}:{:02}/{:02}:{:02}",
+                                COUNT[LOCAL.load(Ordering::Relaxed)] / 60000,
+                                COUNT[LOCAL.load(Ordering::Relaxed)] / 1000 % 60,
+                                COUNT[COUNT.len() - 1] / 60000,
+                                COUNT[COUNT.len() - 1] / 1000 % 60
+                            )),
+                    )
+                    .drag_released()
+                {
+                    TIME_SHIFT.store(true, Ordering::Relaxed);
+                    LOCAL.store(self.progress, Ordering::Relaxed);
+                }
+            }
+        }
         ui.separator();
         ui.label("按下 - 键减速");
         ui.label("按下 + 键加速");
