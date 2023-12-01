@@ -8,20 +8,8 @@ pub fn is_pressed(vk: VIRTUAL_KEY) -> bool {
 
 #[inline(always)]
 fn send(vk: VIRTUAL_KEY) {
-    unsafe {
-        keybd_event(
-            vk.0 as u8,
-            MapVirtualKeyA(vk.0 as u32, MAPVK_VK_TO_VSC) as u8,
-            KEYBD_EVENT_FLAGS(0),
-            0,
-        );
-        keybd_event(
-            vk.0 as u8,
-            MapVirtualKeyA(vk.0 as u32, MAPVK_VK_TO_VSC) as u8,
-            KEYEVENTF_KEYUP,
-            0,
-        );
-    }
+    press(vk);
+    release(vk);
 }
 
 #[inline(always)]
@@ -138,4 +126,28 @@ pub fn vr_chat(key: i32) {
         95 => send(VIRTUAL_KEY(118)),
         _ => {}
     };
+}
+
+#[inline(always)]
+fn press(vk: VIRTUAL_KEY) {
+    unsafe {
+        let mut input = std::mem::zeroed::<INPUT>();
+        input.r#type = INPUT_KEYBOARD;
+        input.Anonymous.ki.wVk = vk;
+        input.Anonymous.ki.wScan = MapVirtualKeyA(vk.0 as u32, MAPVK_VK_TO_VSC) as u16;
+        input.Anonymous.ki.dwFlags = KEYBD_EVENT_FLAGS(0);
+        SendInput(&[input], std::mem::size_of::<INPUT>() as i32);
+    }
+}
+
+#[inline(always)]
+fn release(vk: VIRTUAL_KEY) {
+    unsafe {
+        let mut input = std::mem::zeroed::<INPUT>();
+        input.r#type = INPUT_KEYBOARD;
+        input.Anonymous.ki.wVk = vk;
+        input.Anonymous.ki.wScan = MapVirtualKeyA(vk.0 as u32, MAPVK_VK_TO_VSC) as u16;
+        input.Anonymous.ki.dwFlags = KEYBD_EVENT_FLAGS(2);
+        SendInput(&[input], std::mem::size_of::<INPUT>() as i32);
+    }
 }
