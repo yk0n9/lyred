@@ -4,7 +4,8 @@ use eframe::egui::FontFamily::Proportional;
 use eframe::egui::TextStyle::*;
 use eframe::egui::{FontId, Slider, Ui};
 use eframe::{egui, CreationContext};
-use windows::Win32::UI::Input::KeyboardAndMouse::{VIRTUAL_KEY, VK_BACK, VK_CONTROL, VK_SPACE};
+use serde::{Deserialize, Serialize};
+use windows::Win32::UI::Input::KeyboardAndMouse::VIRTUAL_KEY;
 
 use crate::font::load_fonts;
 use crate::maps::is_pressed;
@@ -33,19 +34,19 @@ pub struct SpeedStatus {
     pub sub: bool,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct FunctionKeys {
-    pub play: VIRTUAL_KEY,
-    pub pause: VIRTUAL_KEY,
-    pub stop: VIRTUAL_KEY,
+    pub play: u16,
+    pub pause: u16,
+    pub stop: u16,
 }
 
 impl Default for FunctionKeys {
     fn default() -> Self {
         Self {
-            play: VK_SPACE,
-            pause: VK_BACK,
-            stop: VK_CONTROL,
+            play: 32,
+            pause: 8,
+            stop: 17,
         }
     }
 }
@@ -123,7 +124,7 @@ impl View for Play {
         });
         SPEED.store(self.speed, Ordering::Relaxed);
         ui.horizontal(|ui| {
-            let sub = is_pressed(VIRTUAL_KEY(189)) || is_pressed(VIRTUAL_KEY(109));
+            let sub = is_pressed(189) || is_pressed(109);
             if !sub {
                 self.speed_status.sub = false;
             }
@@ -134,7 +135,7 @@ impl View for Play {
                     SPEED.store(self.speed, Ordering::Relaxed);
                 }
             }
-            let add = is_pressed(VIRTUAL_KEY(187)) || is_pressed(VIRTUAL_KEY(107));
+            let add = is_pressed(187) || is_pressed(107);
             if !add {
                 self.speed_status.add = false;
             }
@@ -201,18 +202,17 @@ impl View for Play {
         ui.horizontal(|ui| {
             ui.label("按下");
             egui::ComboBox::from_id_source(0)
-                .selected_text(vk_display(self.function_keys.play))
+                .selected_text(vk_display(VIRTUAL_KEY(self.function_keys.play)))
                 .show_ui(ui, |ui| {
                     ui.style_mut().wrap = Some(false);
                     KEY_CODE
                         .iter()
                         .filter(|k| {
-                            **k != self.function_keys.pause.0 as u8
-                                && **k != self.function_keys.stop.0 as u8
+                            **k != self.function_keys.pause && **k != self.function_keys.stop
                         })
                         .for_each(|key| {
-                            let vk = VIRTUAL_KEY(*key as u16);
-                            ui.selectable_value(&mut self.function_keys.play, vk, vk_display(vk));
+                            let vk = VIRTUAL_KEY(*key);
+                            ui.selectable_value(&mut self.function_keys.play, *key, vk_display(vk));
                         });
                 });
             ui.label("键开始播放 | 继续播放");
@@ -220,18 +220,21 @@ impl View for Play {
         ui.horizontal(|ui| {
             ui.label("按下");
             egui::ComboBox::from_id_source(1)
-                .selected_text(vk_display(self.function_keys.pause))
+                .selected_text(vk_display(VIRTUAL_KEY(self.function_keys.pause)))
                 .show_ui(ui, |ui| {
                     ui.style_mut().wrap = Some(false);
                     KEY_CODE
                         .iter()
                         .filter(|k| {
-                            **k != self.function_keys.play.0 as u8
-                                && **k != self.function_keys.stop.0 as u8
+                            **k != self.function_keys.play && **k != self.function_keys.stop
                         })
                         .for_each(|key| {
-                            let vk = VIRTUAL_KEY(*key as u16);
-                            ui.selectable_value(&mut self.function_keys.pause, vk, vk_display(vk));
+                            let vk = VIRTUAL_KEY(*key);
+                            ui.selectable_value(
+                                &mut self.function_keys.pause,
+                                *key,
+                                vk_display(vk),
+                            );
                         });
                 });
             ui.label("键暂停播放");
@@ -239,18 +242,17 @@ impl View for Play {
         ui.horizontal(|ui| {
             ui.label("按下");
             egui::ComboBox::from_id_source(2)
-                .selected_text(vk_display(self.function_keys.stop))
+                .selected_text(vk_display(VIRTUAL_KEY(self.function_keys.stop)))
                 .show_ui(ui, |ui| {
                     ui.style_mut().wrap = Some(false);
                     KEY_CODE
                         .iter()
                         .filter(|k| {
-                            **k != self.function_keys.play.0 as u8
-                                && **k != self.function_keys.pause.0 as u8
+                            **k != self.function_keys.play && **k != self.function_keys.pause
                         })
                         .for_each(|key| {
-                            let vk = VIRTUAL_KEY(*key as u16);
-                            ui.selectable_value(&mut self.function_keys.stop, vk, vk_display(vk));
+                            let vk = VIRTUAL_KEY(*key);
+                            ui.selectable_value(&mut self.function_keys.stop, *key, vk_display(vk));
                         });
                 });
             ui.label("键停止播放");

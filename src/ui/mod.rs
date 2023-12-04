@@ -40,4 +40,9 @@ impl App for Play {
                 }
             });
     }
+
+    fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        let config = ron::to_string(&self.function_keys).unwrap();
+        if std::fs::write("config.ron", &config).is_err() {}
+    }
 }

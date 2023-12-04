@@ -1,8 +1,8 @@
 use windows::Win32::UI::Input::KeyboardAndMouse::*;
 
 #[inline]
-pub fn is_pressed(vk: VIRTUAL_KEY) -> bool {
-    let status = unsafe { GetAsyncKeyState(vk.0 as i32) as u32 };
+pub fn is_pressed(vk: u16) -> bool {
+    let status = unsafe { GetAsyncKeyState(vk as i32) as u32 };
     (status >> 31) == 1
 }
 

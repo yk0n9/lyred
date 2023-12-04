@@ -1,7 +1,8 @@
 #![windows_subsystem = "windows"]
 
-use eframe::egui::Vec2;
-use eframe::{IconData, NativeOptions};
+use eframe::egui::{IconData, Vec2, ViewportBuilder};
+use eframe::NativeOptions;
+use std::sync::Arc;
 
 use lyred::ui::play::Play;
 
@@ -11,12 +12,31 @@ fn main() {
 
 #[inline]
 fn run() {
-    let mut options = NativeOptions {
-        resizable: false,
-        initial_window_size: Some(Vec2::new(400.0, 600.0)),
+    let image = image::load_from_memory(include_bytes!("../resources/lyre.ico")).unwrap();
+    let viewport = ViewportBuilder {
+        resizable: Some(false),
+        icon: Some(Arc::new(IconData {
+            width: image.width(),
+            height: image.height(),
+            rgba: image.into_rgba8().into_raw(),
+        })),
+        inner_size: Some(Vec2::new(400.0, 600.0)),
+        ..Default::default()
+    };
+    let options = NativeOptions {
+        viewport,
         ..NativeOptions::default()
     };
-    let icon_data = IconData::try_from_png_bytes(include_bytes!("../resources/lyre.ico")).unwrap();
-    options.icon_data = Some(icon_data);
-    eframe::run_native("Lyred", options, Box::new(|cc| Box::new(Play::new(cc)))).unwrap();
+    eframe::run_native(
+        "Lyred",
+        options,
+        Box::new(|cc| {
+            let mut play = Play::new(cc);
+            if let Ok(file) = std::fs::read_to_string("config.ron") {
+                play.function_keys = ron::from_str(&file).unwrap();
+            }
+            Box::new(play)
+        }),
+    )
+    .unwrap();
 }
