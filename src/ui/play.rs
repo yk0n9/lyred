@@ -5,7 +5,6 @@ use eframe::egui::TextStyle::*;
 use eframe::egui::{FontId, Slider, Ui};
 use eframe::{egui, CreationContext};
 use serde::{Deserialize, Serialize};
-use windows::Win32::UI::Input::KeyboardAndMouse::VIRTUAL_KEY;
 
 use crate::font::load_fonts;
 use crate::maps::is_pressed;
@@ -71,6 +70,7 @@ impl Play {
             (Small, FontId::new(10.0, Proportional)),
         ]
         .into();
+        style.wrap = Some(false);
         cc.egui_ctx.set_style(style);
 
         Self {
@@ -117,6 +117,7 @@ impl View for Play {
         });
         ui.separator();
         ui.horizontal(|ui| {
+            ui.style_mut().spacing.slider_width = 100.0;
             ui.add(Slider::new(&mut self.speed, 0.1..=5.0).prefix("播放速度:"));
             if ui.button("还原").clicked() {
                 self.speed = 1.0;
@@ -177,6 +178,7 @@ impl View for Play {
         if PLAYING.load(Ordering::Relaxed) {
             self.progress = LOCAL.load(Ordering::Relaxed);
             unsafe {
+                ui.style_mut().spacing.slider_width = 250.0;
                 if ui
                     .add(
                         Slider::new(&mut self.progress, 0..=COUNT.len() - 1)
@@ -202,58 +204,60 @@ impl View for Play {
         ui.horizontal(|ui| {
             ui.label("按下");
             egui::ComboBox::from_id_source(0)
-                .selected_text(vk_display(VIRTUAL_KEY(self.function_keys.play)))
+                .selected_text(vk_display(self.function_keys.play))
                 .show_ui(ui, |ui| {
-                    ui.style_mut().wrap = Some(false);
                     KEY_CODE
                         .iter()
                         .filter(|k| {
                             **k != self.function_keys.pause && **k != self.function_keys.stop
                         })
                         .for_each(|key| {
-                            let vk = VIRTUAL_KEY(*key);
-                            ui.selectable_value(&mut self.function_keys.play, *key, vk_display(vk));
-                        });
+                            ui.selectable_value(
+                                &mut self.function_keys.play,
+                                *key,
+                                vk_display(*key),
+                            );
+                        })
                 });
             ui.label("键开始播放 | 继续播放");
         });
         ui.horizontal(|ui| {
             ui.label("按下");
             egui::ComboBox::from_id_source(1)
-                .selected_text(vk_display(VIRTUAL_KEY(self.function_keys.pause)))
+                .selected_text(vk_display(self.function_keys.pause))
                 .show_ui(ui, |ui| {
-                    ui.style_mut().wrap = Some(false);
                     KEY_CODE
                         .iter()
                         .filter(|k| {
                             **k != self.function_keys.play && **k != self.function_keys.stop
                         })
                         .for_each(|key| {
-                            let vk = VIRTUAL_KEY(*key);
                             ui.selectable_value(
                                 &mut self.function_keys.pause,
                                 *key,
-                                vk_display(vk),
+                                vk_display(*key),
                             );
-                        });
+                        })
                 });
             ui.label("键暂停播放");
         });
         ui.horizontal(|ui| {
             ui.label("按下");
             egui::ComboBox::from_id_source(2)
-                .selected_text(vk_display(VIRTUAL_KEY(self.function_keys.stop)))
+                .selected_text(vk_display(self.function_keys.stop))
                 .show_ui(ui, |ui| {
-                    ui.style_mut().wrap = Some(false);
                     KEY_CODE
                         .iter()
                         .filter(|k| {
                             **k != self.function_keys.play && **k != self.function_keys.pause
                         })
                         .for_each(|key| {
-                            let vk = VIRTUAL_KEY(*key);
-                            ui.selectable_value(&mut self.function_keys.stop, *key, vk_display(vk));
-                        });
+                            ui.selectable_value(
+                                &mut self.function_keys.stop,
+                                *key,
+                                vk_display(*key),
+                            );
+                        })
                 });
             ui.label("键停止播放");
         });
