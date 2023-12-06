@@ -31,8 +31,6 @@ pub struct Play {
 pub struct ControlKey {
     pub add: bool,
     pub sub: bool,
-    pub left: bool,
-    pub right: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
