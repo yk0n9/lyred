@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::sleep;
 use std::time::Duration;
@@ -10,12 +10,14 @@ use rayon::prelude::*;
 
 use crate::maps::{gen_shin, vr_chat};
 use crate::ui::play::Mode;
-use crate::{COUNT, LOCAL, POOL, TIME_SHIFT};
+use crate::{COUNT, LOCAL, PAUSE, PLAYING, POOL, STOP, TIME_SHIFT};
 
 pub static SPEED: AtomicF64 = AtomicF64::new(1.0);
-pub static IS_PLAY: AtomicBool = AtomicBool::new(false);
-pub static PLAYING: AtomicBool = AtomicBool::new(false);
-pub static PAUSE: AtomicBool = AtomicBool::new(false);
+// State:
+// 0 -> Stop
+// 1 -> Playing
+// 2 -> Pause
+pub static STATE: AtomicUsize = AtomicUsize::new(STOP);
 
 const DEFAULT_TEMPO_MPQ: f64 = 500000.0;
 const DEFAULT_FPS: f64 = 480.0;
@@ -64,10 +66,11 @@ impl Midi {
             let e = events[i];
             i += 1;
 
-            if PAUSE.load(Ordering::Relaxed) {
-                while PAUSE.load(Ordering::Relaxed) {}
-                input_time = e.delay;
-                start_time = Local::now().timestamp_millis();
+            fn pause(e: Event, i: &mut usize, input_time: &mut f64, start_time: &mut i64) {
+                while STATE.load(Ordering::Relaxed) == PAUSE {}
+                *input_time = e.delay;
+                *start_time = Local::now().timestamp_millis();
+                *i -= 1;
             }
 
             input_time += e.delay / SPEED.load(Ordering::Relaxed);
@@ -76,9 +79,10 @@ impl Midi {
                 current @ 1.. => sleep(Duration::from_millis(current)),
                 _ => {}
             }
-            match IS_PLAY.load(Ordering::Relaxed) {
-                true => f(e.press),
-                false => break,
+            match STATE.load(Ordering::Relaxed) {
+                PLAYING => f(e.press),
+                PAUSE => pause(e, &mut i, &mut input_time, &mut start_time),
+                _ => break,
             }
         }
     }
@@ -189,16 +193,14 @@ impl Midi {
     }
 
     pub fn playback(self, offset: i32, mode: Mode) {
-        PLAYING.store(true, Ordering::Relaxed);
         POOL.spawn(move || {
             let send = match mode {
                 Mode::GenShin => gen_shin,
                 Mode::VRChat => vr_chat,
             };
             self.play(|key| send(key + offset));
-            PLAYING.store(false, Ordering::Relaxed);
-            IS_PLAY.store(false, Ordering::Relaxed);
-            LOCAL.store(0, Ordering::Relaxed);
+            STATE.store(STOP, Ordering::Relaxed);
+            LOCAL.store(usize::MAX, Ordering::Relaxed);
         });
     }
 

@@ -33,7 +33,7 @@ fn run() {
         Box::new(|cc| {
             let mut play = Play::new(cc);
             if let Ok(file) = std::fs::read_to_string("config.ron") {
-                play.function_keys = ron::from_str(&file).unwrap();
+                play.function_key = ron::from_str(&file).unwrap();
             }
             Box::new(play)
         }),

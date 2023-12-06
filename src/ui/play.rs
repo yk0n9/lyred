@@ -8,10 +8,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::font::load_fonts;
 use crate::maps::is_pressed;
-use crate::midi::{Midi, IS_PLAY, PAUSE, PLAYING, SPEED};
+use crate::midi::{Midi, SPEED, STATE};
 use crate::ui::View;
 use crate::util::{vk_display, KEY_CODE};
-use crate::{COUNT, LOCAL, TIME_SHIFT};
+use crate::{COUNT, LOCAL, PAUSE, PLAYING, STOP, TIME_SHIFT};
 
 #[derive(Debug, Clone)]
 pub struct Play {
@@ -22,25 +22,27 @@ pub struct Play {
     pub tracks_enable: bool,
     pub offset: i32,
     pub notify_merge: bool,
-    pub function_keys: FunctionKeys,
-    pub speed_status: SpeedStatus,
+    pub function_key: FunctionKey,
+    pub control_key: ControlKey,
     pub progress: usize,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
-pub struct SpeedStatus {
+pub struct ControlKey {
     pub add: bool,
     pub sub: bool,
+    pub left: bool,
+    pub right: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct FunctionKeys {
+pub struct FunctionKey {
     pub play: u16,
     pub pause: u16,
     pub stop: u16,
 }
 
-impl Default for FunctionKeys {
+impl Default for FunctionKey {
     fn default() -> Self {
         Self {
             play: 32,
@@ -81,8 +83,8 @@ impl Play {
             tracks_enable: false,
             offset: 0,
             notify_merge: false,
-            function_keys: FunctionKeys::default(),
-            speed_status: SpeedStatus::default(),
+            function_key: FunctionKey::default(),
+            control_key: ControlKey::default(),
             progress: 0,
         }
     }
@@ -95,8 +97,7 @@ impl View for Play {
         ui.horizontal(|ui| {
             ui.label("选择MIDI文件");
             if ui.button("打开").clicked() {
-                IS_PLAY.store(false, Ordering::Relaxed);
-                PAUSE.store(false, Ordering::Relaxed);
+                STATE.store(STOP, Ordering::Relaxed);
                 self.midi.clone().init();
                 self.offset = 0;
             }
@@ -117,7 +118,6 @@ impl View for Play {
         });
         ui.separator();
         ui.horizontal(|ui| {
-            ui.style_mut().spacing.slider_width = 100.0;
             ui.add(Slider::new(&mut self.speed, 0.1..=5.0).prefix("播放速度:"));
             if ui.button("还原").clicked() {
                 self.speed = 1.0;
@@ -127,10 +127,10 @@ impl View for Play {
         ui.horizontal(|ui| {
             let sub = is_pressed(189) || is_pressed(109);
             if !sub {
-                self.speed_status.sub = false;
+                self.control_key.sub = false;
             }
-            if ui.button("减速0.1x").clicked() || sub != self.speed_status.sub {
-                self.speed_status.sub = sub;
+            if ui.button("减速0.1x").clicked() || sub != self.control_key.sub {
+                self.control_key.sub = sub;
                 if SPEED.load(Ordering::Relaxed) > 0.1 {
                     self.speed -= 0.1;
                     SPEED.store(self.speed, Ordering::Relaxed);
@@ -138,10 +138,10 @@ impl View for Play {
             }
             let add = is_pressed(187) || is_pressed(107);
             if !add {
-                self.speed_status.add = false;
+                self.control_key.add = false;
             }
-            if ui.button("加速0.1x").clicked() || add != self.speed_status.add {
-                self.speed_status.add = add;
+            if ui.button("加速0.1x").clicked() || add != self.control_key.add {
+                self.control_key.add = add;
                 self.speed += 0.1;
                 SPEED.store(self.speed, Ordering::Relaxed);
             }
@@ -175,10 +175,9 @@ impl View for Play {
         ui.toggle_value(&mut self.tracks_enable, "音轨列表");
         ui.separator();
         ui.label(self.state);
-        if PLAYING.load(Ordering::Relaxed) {
+        if STATE.load(Ordering::Relaxed) != STOP {
             self.progress = LOCAL.load(Ordering::Relaxed);
             unsafe {
-                ui.style_mut().spacing.slider_width = 250.0;
                 if ui
                     .add(
                         Slider::new(&mut self.progress, 0..=COUNT.len() - 1)
@@ -204,16 +203,14 @@ impl View for Play {
         ui.horizontal(|ui| {
             ui.label("按下");
             egui::ComboBox::from_id_source(0)
-                .selected_text(vk_display(self.function_keys.play))
+                .selected_text(vk_display(self.function_key.play))
                 .show_ui(ui, |ui| {
                     KEY_CODE
                         .iter()
-                        .filter(|k| {
-                            **k != self.function_keys.pause && **k != self.function_keys.stop
-                        })
+                        .filter(|k| **k != self.function_key.pause && **k != self.function_key.stop)
                         .for_each(|key| {
                             ui.selectable_value(
-                                &mut self.function_keys.play,
+                                &mut self.function_key.play,
                                 *key,
                                 vk_display(*key),
                             );
@@ -224,16 +221,14 @@ impl View for Play {
         ui.horizontal(|ui| {
             ui.label("按下");
             egui::ComboBox::from_id_source(1)
-                .selected_text(vk_display(self.function_keys.pause))
+                .selected_text(vk_display(self.function_key.pause))
                 .show_ui(ui, |ui| {
                     KEY_CODE
                         .iter()
-                        .filter(|k| {
-                            **k != self.function_keys.play && **k != self.function_keys.stop
-                        })
+                        .filter(|k| **k != self.function_key.play && **k != self.function_key.stop)
                         .for_each(|key| {
                             ui.selectable_value(
-                                &mut self.function_keys.pause,
+                                &mut self.function_key.pause,
                                 *key,
                                 vk_display(*key),
                             );
@@ -244,16 +239,14 @@ impl View for Play {
         ui.horizontal(|ui| {
             ui.label("按下");
             egui::ComboBox::from_id_source(2)
-                .selected_text(vk_display(self.function_keys.stop))
+                .selected_text(vk_display(self.function_key.stop))
                 .show_ui(ui, |ui| {
                     KEY_CODE
                         .iter()
-                        .filter(|k| {
-                            **k != self.function_keys.play && **k != self.function_keys.pause
-                        })
+                        .filter(|k| **k != self.function_key.play && **k != self.function_key.pause)
                         .for_each(|key| {
                             ui.selectable_value(
-                                &mut self.function_keys.stop,
+                                &mut self.function_key.stop,
                                 *key,
                                 vk_display(*key),
                             );
@@ -264,31 +257,32 @@ impl View for Play {
         ui.label("");
         ui.label("注意: 每±12个偏移量为一个八度");
 
-        if is_pressed(self.function_keys.play) {
-            PAUSE.store(false, Ordering::Relaxed);
-            if !PLAYING.load(Ordering::Relaxed) {
-                IS_PLAY.store(true, Ordering::Relaxed);
-                self.midi.clone().playback(self.offset, self.mode);
+        if is_pressed(self.function_key.play) {
+            match STATE.load(Ordering::Relaxed) {
+                STOP => {
+                    if LOCAL.load(Ordering::Relaxed) == usize::MAX {
+                        STATE.store(PLAYING, Ordering::Relaxed);
+                        self.midi.clone().playback(self.offset, self.mode);
+                    }
+                }
+                PAUSE => STATE.store(PLAYING, Ordering::Relaxed),
+                _ => {}
             }
         }
-        if is_pressed(self.function_keys.stop) {
-            PAUSE.store(false, Ordering::Relaxed);
-            IS_PLAY.store(false, Ordering::Relaxed);
+        if is_pressed(self.function_key.stop) {
+            STATE.store(STOP, Ordering::Relaxed);
         }
-        if is_pressed(self.function_keys.pause) {
-            if !PAUSE.load(Ordering::Relaxed) {
-                PAUSE.store(true, Ordering::Relaxed);
+        if is_pressed(self.function_key.pause) {
+            match STATE.load(Ordering::Relaxed) {
+                PLAYING => STATE.store(PAUSE, Ordering::Relaxed),
+                _ => {}
             }
         }
 
-        if IS_PLAY.load(Ordering::Relaxed) && !PAUSE.load(Ordering::Relaxed) {
-            self.state = "播放中...";
-        }
-        if !IS_PLAY.load(Ordering::Relaxed) {
-            self.state = "已停止";
-        }
-        if IS_PLAY.load(Ordering::Relaxed) && PAUSE.load(Ordering::Relaxed) {
-            self.state = "已暂停";
-        }
+        self.state = match STATE.load(Ordering::Relaxed) {
+            PLAYING => "播放中...",
+            PAUSE => "已暂停",
+            _ => "已停止",
+        };
     }
 }
