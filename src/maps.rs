@@ -1,3 +1,4 @@
+use crate::ui::play::Mode;
 use windows::Win32::UI::Input::KeyboardAndMouse::*;
 
 #[inline]
@@ -10,6 +11,14 @@ pub fn is_pressed(vk: u16) -> bool {
 fn send(vk: VIRTUAL_KEY) {
     press(vk);
     release(vk);
+}
+
+#[inline]
+pub fn get_map(mode: Mode) -> impl Fn(i32) {
+    match mode {
+        Mode::GenShin => gen_shin,
+        Mode::VRChat => vr_chat,
+    }
 }
 
 #[inline(always)]

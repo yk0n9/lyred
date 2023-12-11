@@ -8,7 +8,7 @@ use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 use portable_atomic::AtomicF64;
 use rayon::prelude::*;
 
-use crate::maps::{gen_shin, vr_chat};
+use crate::maps::get_map;
 use crate::ui::play::Mode;
 use crate::{COUNT, LOCAL, PAUSE, PLAYING, POOL, STOP, TIME_SHIFT};
 
@@ -194,10 +194,7 @@ impl Midi {
 
     pub fn playback(self, offset: i32, mode: Mode) {
         POOL.spawn(move || {
-            let send = match mode {
-                Mode::GenShin => gen_shin,
-                Mode::VRChat => vr_chat,
-            };
+            let send = get_map(mode);
             self.play(|key| send(key + offset));
             STATE.store(STOP, Ordering::Relaxed);
             LOCAL.store(usize::MAX, Ordering::Relaxed);
