@@ -5,22 +5,22 @@ use std::time::Duration;
 
 use chrono::Local;
 use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
-use portable_atomic::AtomicF64;
+use portable_atomic::AtomicF32;
 use rayon::prelude::*;
 
 use crate::maps::get_map;
 use crate::ui::play::Mode;
 use crate::{COUNT, LOCAL, PAUSE, PLAYING, POOL, STOP, TIME_SHIFT};
 
-pub static SPEED: AtomicF64 = AtomicF64::new(1.0);
+pub static SPEED: AtomicF32 = AtomicF32::new(1.0);
 // State:
 // 0 -> Stop
 // 1 -> Playing
 // 2 -> Pause
 pub static STATE: AtomicUsize = AtomicUsize::new(STOP);
 
-const DEFAULT_TEMPO_MPQ: f64 = 500000.0;
-const DEFAULT_FPS: f64 = 480.0;
+const DEFAULT_TEMPO_MPQ: f32 = 500000.0;
+const DEFAULT_FPS: f32 = 480.0;
 const MAP: &'static [i32] = &[
     24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64,
     65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95,
@@ -30,10 +30,10 @@ const MAP: &'static [i32] = &[
 pub struct Midi {
     pub name: Arc<Mutex<Option<String>>>,
     pub events: Arc<Mutex<Vec<Event>>>,
-    pub fps: Arc<AtomicF64>,
+    pub fps: Arc<AtomicF32>,
     pub tracks: Arc<Mutex<Vec<Vec<RawEvent>>>>,
     pub track_num: Arc<Mutex<Vec<(bool, usize)>>>,
-    pub hit_rate: Arc<AtomicF64>,
+    pub hit_rate: Arc<AtomicF32>,
 }
 
 impl Midi {
@@ -66,7 +66,7 @@ impl Midi {
             let e = events[i];
             i += 1;
 
-            fn pause(e: Event, i: &mut usize, input_time: &mut f64, start_time: &mut i64) {
+            fn pause(e: Event, i: &mut usize, input_time: &mut f32, start_time: &mut i64) {
                 while STATE.load(Ordering::Relaxed) == PAUSE {}
                 *input_time = e.delay;
                 *start_time = Local::now().timestamp_millis();
@@ -74,7 +74,7 @@ impl Midi {
             }
 
             input_time += e.delay / SPEED.load(Ordering::Relaxed);
-            let playback_time = (Local::now().timestamp_millis() - start_time) as f64;
+            let playback_time = (Local::now().timestamp_millis() - start_time) as f32;
             match (input_time - playback_time) as u64 {
                 current @ 1.. => sleep(Duration::from_millis(current)),
                 _ => {}
@@ -101,7 +101,7 @@ impl Midi {
                 let len = smf.tracks.len();
                 self.fps.store(
                     match smf.header.timing {
-                        Timing::Metrical(fps) => fps.as_int() as f64,
+                        Timing::Metrical(fps) => fps.as_int() as f32,
                         _ => DEFAULT_FPS,
                     },
                     Ordering::Relaxed,
@@ -117,7 +117,7 @@ impl Midi {
                             .map(|e| {
                                 let event = match e.kind {
                                     TrackEventKind::Meta(MetaMessage::Tempo(t)) => {
-                                        ValidEvent::Tempo(t.as_int() as f64)
+                                        ValidEvent::Tempo(t.as_int() as f32)
                                     }
                                     TrackEventKind::Midi {
                                         message: MidiMessage::NoteOn { key, vel },
@@ -131,7 +131,7 @@ impl Midi {
                                     }
                                     _ => ValidEvent::Other,
                                 };
-                                tick += e.delta.as_int() as f64;
+                                tick += e.delta.as_int() as f32;
                                 RawEvent { event, tick }
                             })
                             .collect::<Vec<_>>()
@@ -201,22 +201,22 @@ impl Midi {
         });
     }
 
-    pub fn detect(&self, offset: i32) -> f64 {
+    pub fn detect(&self, offset: i32) -> f32 {
         let events = self.events.lock().unwrap();
-        let all = events.len() as f64;
+        let all = events.len() as f32;
         let mut count = 0;
         events.iter().for_each(|e| {
             if MAP.contains(&(e.press + offset)) {
                 count += 1;
             }
         });
-        count as f64 / all
+        count as f32 / all
     }
 
     /// 1. The difference in milliseconds between two events
     /// 2. The time in milliseconds this event was in track
     #[inline]
-    fn tick2millis(tick: f64, tempo_mpq: f64, fps: f64) -> f64 {
+    fn tick2millis(tick: f32, tempo_mpq: f32, fps: f32) -> f32 {
         tick * tempo_mpq / fps / 1000.0
     }
 
@@ -224,7 +224,7 @@ impl Midi {
     /// 2. BPM-Tempo to MPQ-Tempo
     #[allow(dead_code)]
     #[inline]
-    fn convert_tempo(mut tempo: f64) -> f64 {
+    fn convert_tempo(mut tempo: f32) -> f32 {
         if tempo <= 0.0 {
             tempo = 1.0;
         }
@@ -235,18 +235,18 @@ impl Midi {
 #[derive(Debug, Copy, Clone)]
 enum ValidEvent {
     Note(i32),
-    Tempo(f64),
+    Tempo(f32),
     Other,
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct RawEvent {
     event: ValidEvent,
-    tick: f64,
+    tick: f32,
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct Event {
     pub press: i32,
-    pub delay: f64,
+    pub delay: f32,
 }

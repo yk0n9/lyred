@@ -16,7 +16,7 @@ use crate::{COUNT, LOCAL, PAUSE, PLAYING, STOP, TIME_SHIFT};
 #[derive(Debug, Clone)]
 pub struct Play {
     pub midi: Midi,
-    pub speed: f64,
+    pub speed: f32,
     pub mode: Mode,
     pub state: &'static str,
     pub tracks_enable: bool,
