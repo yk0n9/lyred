@@ -66,13 +66,6 @@ impl Midi {
             let e = events[i];
             i += 1;
 
-            fn pause(e: Event, i: &mut usize, input_time: &mut f32, start_time: &mut i64) {
-                while STATE.load(Ordering::Relaxed) == PAUSE {}
-                *input_time = e.delay;
-                *start_time = Local::now().timestamp_millis();
-                *i -= 1;
-            }
-
             input_time += e.delay / SPEED.load(Ordering::Relaxed);
             let playback_time = (Local::now().timestamp_millis() - start_time) as f32;
             match (input_time - playback_time) as u64 {
@@ -81,7 +74,12 @@ impl Midi {
             }
             match STATE.load(Ordering::Relaxed) {
                 PLAYING => f(e.press),
-                PAUSE => pause(e, &mut i, &mut input_time, &mut start_time),
+                PAUSE => {
+                    while STATE.load(Ordering::Relaxed) == PAUSE {}
+                    input_time = e.delay;
+                    start_time = Local::now().timestamp_millis();
+                    i -= 1;
+                }
                 _ => break,
             }
         }

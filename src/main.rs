@@ -21,6 +21,7 @@ fn run() {
             rgba: image.into_rgba8().into_raw(),
         })),
         inner_size: Some(Vec2::new(400.0, 600.0)),
+        maximize_button: Some(false),
         ..Default::default()
     };
     let options = NativeOptions {

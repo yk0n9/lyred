@@ -1,4 +1,5 @@
 use crate::ui::play::Mode;
+use once_cell::sync::Lazy;
 use windows::Win32::UI::Input::KeyboardAndMouse::*;
 
 #[inline]
@@ -137,34 +138,36 @@ pub fn vr_chat(key: i32) {
     };
 }
 
+static mut I: Lazy<INPUT> = Lazy::new(|| unsafe {
+    let mut input = std::mem::zeroed::<INPUT>();
+    input.r#type = INPUT_KEYBOARD;
+    input
+});
+
 #[inline(always)]
 fn press(vk: VIRTUAL_KEY) {
     unsafe {
-        let mut input = std::mem::zeroed::<INPUT>();
-        input.r#type = INPUT_KEYBOARD;
-        input.Anonymous.ki = KEYBDINPUT {
+        I.Anonymous.ki = KEYBDINPUT {
             wVk: vk,
             wScan: MapVirtualKeyA(vk.0 as u32, MAPVK_VK_TO_VSC) as u16,
             dwFlags: KEYBD_EVENT_FLAGS(0),
             time: 0,
             dwExtraInfo: 0,
         };
-        SendInput(&[input], std::mem::size_of::<INPUT>() as i32);
+        SendInput(&[*I], std::mem::size_of::<INPUT>() as i32);
     }
 }
 
 #[inline(always)]
 fn release(vk: VIRTUAL_KEY) {
     unsafe {
-        let mut input = std::mem::zeroed::<INPUT>();
-        input.r#type = INPUT_KEYBOARD;
-        input.Anonymous.ki = KEYBDINPUT {
+        I.Anonymous.ki = KEYBDINPUT {
             wVk: vk,
             wScan: MapVirtualKeyA(vk.0 as u32, MAPVK_VK_TO_VSC) as u16,
             dwFlags: KEYBD_EVENT_FLAGS(2),
             time: 0,
             dwExtraInfo: 0,
         };
-        SendInput(&[input], std::mem::size_of::<INPUT>() as i32);
+        SendInput(&[*I], std::mem::size_of::<INPUT>() as i32);
     }
 }
