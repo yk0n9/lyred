@@ -4,7 +4,7 @@ use eframe::egui::{IconData, Vec2, ViewportBuilder};
 use eframe::NativeOptions;
 use std::sync::Arc;
 
-use lyred::ui::play::Play;
+use lyred::ui::play::{FunctionKey, Play};
 
 fn main() {
     run();
@@ -34,7 +34,7 @@ fn run() {
         Box::new(|cc| {
             let mut play = Play::new(cc);
             if let Ok(file) = std::fs::read_to_string("config.ron") {
-                play.function_key = ron::from_str(&file).unwrap();
+                play.function_key = ron::from_str(&file).unwrap_or(FunctionKey::default());
             }
             Box::new(play)
         }),
