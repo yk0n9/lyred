@@ -1,5 +1,5 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -32,7 +32,7 @@ pub struct Midi {
     pub events: Arc<Mutex<Vec<Event>>>,
     pub fps: Arc<AtomicF32>,
     pub tracks: Arc<Mutex<Vec<Vec<RawEvent>>>>,
-    pub track_num: Arc<Mutex<Vec<(bool, usize)>>>,
+    pub track_num: Arc<RwLock<Vec<(bool, usize)>>>,
     pub hit_rate: Arc<AtomicF32>,
 }
 
@@ -44,7 +44,7 @@ impl Midi {
             events: Arc::new(Mutex::new(vec![])),
             fps: Arc::new(Default::default()),
             tracks: Arc::new(Mutex::new(vec![])),
-            track_num: Arc::new(Mutex::new(vec![])),
+            track_num: Arc::new(RwLock::new(vec![])),
             hit_rate: Arc::new(Default::default()),
         }
     }
@@ -139,7 +139,7 @@ impl Midi {
                 self.merge_tracks(&(0..len).collect::<Vec<_>>());
                 let enables = vec![true; len].into_iter();
                 let range = (0..len).collect::<Vec<_>>().into_iter();
-                *self.track_num.lock().unwrap() = enables.zip(range).collect();
+                *self.track_num.write().unwrap() = enables.zip(range).collect();
             }
             self.hit_rate.store(self.detect(0), Ordering::Relaxed);
         });
