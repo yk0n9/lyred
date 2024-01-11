@@ -1,1 +1,4 @@
+#define RT_MANIFEST 24
+1 RT_MANIFEST "lyred.exe.manifest"
+
 iconName ICON "lyre.ico"

@@ -195,7 +195,7 @@ impl Midi {
             let send = get_map(mode);
             self.play(|key| send(key + offset));
             STATE.store(STOP, Ordering::Relaxed);
-            LOCAL.store(usize::MAX, Ordering::Relaxed);
+            LOCAL.store(!0, Ordering::Relaxed);
         });
     }
 
