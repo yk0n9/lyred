@@ -1,9 +1,8 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread::sleep;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
-use chrono::Local;
 use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 use portable_atomic::AtomicF32;
 use rayon::prelude::*;
@@ -51,7 +50,7 @@ impl Midi {
 
     fn play<F: Fn(i32)>(&self, f: F) {
         let events = self.events.lock().unwrap().to_vec();
-        let mut start_time = Local::now().timestamp_millis();
+        let mut start_time = Instant::now();
         let mut input_time = 0.0;
         let mut i = 0;
         while i < events.len() {
@@ -59,7 +58,7 @@ impl Midi {
                 TIME_SHIFT.store(false, Ordering::Relaxed);
                 i = LOCAL.load(Ordering::Relaxed);
                 input_time = events[i].delay;
-                start_time = Local::now().timestamp_millis();
+                start_time = Instant::now();
             } else {
                 LOCAL.store(i, Ordering::Relaxed);
             }
@@ -67,8 +66,7 @@ impl Midi {
             i += 1;
 
             input_time += e.delay / SPEED.load(Ordering::Relaxed);
-            let playback_time = (Local::now().timestamp_millis() - start_time) as f32;
-            match (input_time - playback_time) as u64 {
+            match (input_time - start_time.elapsed().as_millis() as f32) as u64 {
                 current @ 1.. => sleep(Duration::from_millis(current)),
                 _ => {}
             }
@@ -77,7 +75,7 @@ impl Midi {
                 PAUSE => {
                     while STATE.load(Ordering::Relaxed) == PAUSE {}
                     input_time = e.delay;
-                    start_time = Local::now().timestamp_millis();
+                    start_time = Instant::now();
                     i -= 1;
                 }
                 _ => break,
