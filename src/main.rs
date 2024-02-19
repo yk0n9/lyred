@@ -20,7 +20,7 @@ fn run() {
             height: image.height(),
             rgba: image.into_rgba8().into_raw(),
         })),
-        inner_size: Some(Vec2::new(400.0, 600.0)),
+        inner_size: Some(Vec2::new(400.0, 700.0)),
         maximize_button: Some(false),
         ..Default::default()
     };

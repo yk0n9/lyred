@@ -1,11 +1,10 @@
 use crate::ui::play::Mode;
-use once_cell::sync::Lazy;
 use windows::Win32::UI::Input::KeyboardAndMouse::*;
 
 #[inline]
 pub fn is_pressed(vk: u16) -> bool {
     let status = unsafe { GetAsyncKeyState(vk as i32) as u32 };
-    (status >> 31) == 1
+    status >> 31 == 1
 }
 
 #[inline(always)]
@@ -138,11 +137,12 @@ pub fn vr_chat(key: i32) {
     };
 }
 
-static mut I: Lazy<INPUT> = Lazy::new(|| unsafe {
+static mut I: INPUT = unsafe {
     let mut input = std::mem::zeroed::<INPUT>();
     input.r#type = INPUT_KEYBOARD;
     input
-});
+};
+static SIZE: i32 = std::mem::size_of::<INPUT>() as i32;
 
 #[inline(always)]
 fn press(vk: VIRTUAL_KEY) {
@@ -154,7 +154,7 @@ fn press(vk: VIRTUAL_KEY) {
             time: 0,
             dwExtraInfo: 0,
         };
-        SendInput(&[*I], std::mem::size_of::<INPUT>() as i32);
+        SendInput(&[I], SIZE);
     }
 }
 
@@ -168,6 +168,6 @@ fn release(vk: VIRTUAL_KEY) {
             time: 0,
             dwExtraInfo: 0,
         };
-        SendInput(&[*I], std::mem::size_of::<INPUT>() as i32);
+        SendInput(&[I], SIZE);
     }
 }

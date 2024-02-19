@@ -46,27 +46,27 @@ impl Midi {
             }
 
             let phone = res
-                .replace("q", "+1")
-                .replace("w", "+2")
-                .replace("e", "+3")
-                .replace("r", "+4")
-                .replace("t", "+5")
-                .replace("y", "+6")
-                .replace("u", "+7")
-                .replace("a", "1")
-                .replace("s", "2")
-                .replace("d", "3")
-                .replace("f", "4")
-                .replace("g", "5")
-                .replace("h", "6")
-                .replace("j", "7")
-                .replace("z", "-1")
-                .replace("x", "-2")
-                .replace("c", "-3")
-                .replace("v", "-4")
-                .replace("b", "-5")
-                .replace("n", "-6")
-                .replace("m", "-7");
+                .replace('q', "+1")
+                .replace('w', "+2")
+                .replace('e', "+3")
+                .replace('r', "+4")
+                .replace('t', "+5")
+                .replace('y', "+6")
+                .replace('u', "+7")
+                .replace('a', "1")
+                .replace('s', "2")
+                .replace('d', "3")
+                .replace('f', "4")
+                .replace('g', "5")
+                .replace('h', "6")
+                .replace('j', "7")
+                .replace('z', "-1")
+                .replace('x', "-2")
+                .replace('c', "-3")
+                .replace('v', "-4")
+                .replace('b', "-5")
+                .replace('n', "-6")
+                .replace('m', "-7");
             if let (Ok(_), Ok(_)) = (
                 fs::write(format!("{}.txt", name), res.to_uppercase().as_bytes()),
                 fs::write(format!("phone-{}.txt", name), phone.as_bytes()),

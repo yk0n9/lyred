@@ -20,7 +20,7 @@ pub static STATE: AtomicUsize = AtomicUsize::new(STOP);
 
 const DEFAULT_TEMPO_MPQ: f32 = 500000.0;
 const DEFAULT_FPS: f32 = 480.0;
-const MAP: &'static [i32] = &[
+const MAP: &[i32] = &[
     24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64,
     65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95,
 ];
@@ -33,6 +33,12 @@ pub struct Midi {
     pub tracks: Arc<Mutex<Vec<Vec<RawEvent>>>>,
     pub track_num: Arc<RwLock<Vec<(bool, usize)>>>,
     pub hit_rate: Arc<AtomicF32>,
+}
+
+impl Default for Midi {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Midi {
@@ -66,9 +72,8 @@ impl Midi {
             i += 1;
 
             input_time += e.delay / SPEED.load(Ordering::Relaxed);
-            match (input_time - start_time.elapsed().as_millis() as f32) as u64 {
-                current @ 1.. => sleep(Duration::from_millis(current)),
-                _ => {}
+            if let current @ 1.. = (input_time - start_time.elapsed().as_millis() as f32) as u64 {
+                sleep(Duration::from_millis(current));
             }
             match STATE.load(Ordering::Relaxed) {
                 PLAYING => f(e.press),
@@ -149,10 +154,8 @@ impl Midi {
             for event in events {
                 if indices.contains(&index) {
                     current.push(*event);
-                } else {
-                    if let ValidEvent::Tempo(_) = event.event {
-                        current.push(*event);
-                    }
+                } else if let ValidEvent::Tempo(_) = event.event {
+                    current.push(*event);
                 }
             }
         }

@@ -273,9 +273,8 @@ impl View for Play {
             STATE.store(STOP, Ordering::Relaxed);
         }
         if is_pressed(self.function_key.pause) {
-            match STATE.load(Ordering::Relaxed) {
-                PLAYING => STATE.store(PAUSE, Ordering::Relaxed),
-                _ => {}
+            if let PLAYING = STATE.load(Ordering::Relaxed) {
+                STATE.store(PAUSE, Ordering::Relaxed);
             }
         }
 
