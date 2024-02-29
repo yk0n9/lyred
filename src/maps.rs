@@ -1,5 +1,6 @@
-use crate::ui::play::Mode;
 use windows::Win32::UI::Input::KeyboardAndMouse::*;
+
+use crate::ui::play::Mode;
 
 #[inline]
 pub fn is_pressed(vk: u16) -> bool {

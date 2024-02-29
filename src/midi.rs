@@ -1,15 +1,16 @@
+use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, RwLock};
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
 use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
+use parking_lot::{Mutex, RwLock};
 use portable_atomic::AtomicF32;
-use rayon::prelude::*;
+use rayon::slice::ParallelSliceMut;
 
+use crate::{COUNT, LOCAL, PAUSE, PLAYING, POOL, STOP, TIME_SHIFT};
 use crate::maps::get_map;
 use crate::ui::play::Mode;
-use crate::{COUNT, LOCAL, PAUSE, PLAYING, POOL, STOP, TIME_SHIFT};
 
 pub static SPEED: AtomicF32 = AtomicF32::new(1.0);
 // State:
@@ -55,7 +56,7 @@ impl Midi {
     }
 
     fn play<F: Fn(i32)>(&self, f: F) {
-        let events = self.events.lock().unwrap().to_vec();
+        let events = self.events.lock().to_vec();
         let mut start_time = Instant::now();
         let mut input_time = 0.0;
         let mut i = 0;
@@ -94,7 +95,7 @@ impl Midi {
                 .add_filter("MIDI File", &["mid"])
                 .pick_file()
             {
-                *self.name.lock().unwrap() =
+                *self.name.lock() =
                     Some(path.file_name().unwrap().to_string_lossy().into_owned());
 
                 let file = std::fs::read(path).unwrap();
@@ -108,7 +109,7 @@ impl Midi {
                     Ordering::Relaxed,
                 );
 
-                *self.tracks.lock().unwrap() = smf
+                *self.tracks.lock() = smf
                     .tracks
                     .into_iter()
                     .map(|track| {
@@ -142,7 +143,7 @@ impl Midi {
                 self.merge_tracks(&(0..len).collect::<Vec<_>>());
                 let enables = vec![true; len].into_iter();
                 let range = (0..len).collect::<Vec<_>>().into_iter();
-                *self.track_num.write().unwrap() = enables.zip(range).collect();
+                *self.track_num.write() = enables.zip(range).collect();
             }
             self.hit_rate.store(self.detect(0), Ordering::Relaxed);
         });
@@ -150,7 +151,7 @@ impl Midi {
 
     pub fn merge_tracks(&self, indices: &[usize]) {
         let mut current = vec![];
-        for (index, events) in self.tracks.lock().unwrap().iter().enumerate() {
+        for (index, events) in self.tracks.lock().iter().enumerate() {
             for event in events {
                 if indices.contains(&index) {
                     current.push(*event);
@@ -165,7 +166,7 @@ impl Midi {
         let mut tempo = DEFAULT_TEMPO_MPQ;
         let mut time = 0;
         let mut count = Vec::with_capacity(current.len());
-        *self.events.lock().unwrap() = current
+        *self.events.lock() = current
             .into_iter()
             .filter_map(|event| match event.event {
                 ValidEvent::Note(press) => {
@@ -201,7 +202,7 @@ impl Midi {
     }
 
     pub fn detect(&self, offset: i32) -> f32 {
-        let events = self.events.lock().unwrap();
+        let events = self.events.lock();
         let all = events.len() as f32;
         let mut count = 0;
         events.iter().for_each(|e| {

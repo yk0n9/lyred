@@ -9,7 +9,7 @@ impl Midi {
     pub fn convert_from_midi(self, name: String) {
         POOL.spawn(move || {
             let mut res = String::new();
-            let events = self.events.lock().unwrap();
+            let events = self.events.lock();
             let mut iter = events.iter().peekable();
             let mut count = 0;
             while let Some(e) = iter.next() {

@@ -1,7 +1,7 @@
 use std::sync::atomic::Ordering;
 
+use eframe::{App, egui, Frame};
 use eframe::egui::{Context, Ui};
-use eframe::{egui, App, Frame};
 
 use crate::ui::play::Play;
 
@@ -18,7 +18,7 @@ impl App for Play {
         egui::Window::new("音轨")
             .open(&mut self.tracks_enable)
             .show(ctx, |ui| {
-                for (enable, index) in self.midi.track_num.write().unwrap().iter_mut() {
+                for (enable, index) in self.midi.track_num.write().iter_mut() {
                     if ui.checkbox(enable, format!("Track {}", index)).changed() {
                         self.notify_merge = true;
                     }
@@ -28,7 +28,6 @@ impl App for Play {
                         .midi
                         .track_num
                         .read()
-                        .unwrap()
                         .iter()
                         .filter_map(|(enable, index)| if *enable { Some(*index) } else { None })
                         .collect::<Vec<_>>();

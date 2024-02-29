@@ -1,8 +1,9 @@
 #![windows_subsystem = "windows"]
 
+use std::sync::Arc;
+
 use eframe::egui::{IconData, Vec2, ViewportBuilder};
 use eframe::NativeOptions;
-use std::sync::Arc;
 
 use lyred::ui::play::{FunctionKey, Play};
 
@@ -39,5 +40,5 @@ fn run() {
             Box::new(play)
         }),
     )
-    .unwrap();
+        .unwrap();
 }
