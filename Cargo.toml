@@ -9,13 +9,13 @@ build = "build.rs"
 [dependencies]
 midly = "0.5"
 rayon = "1"
-image = "0.24"
+image = "0.25"
 eframe = "0.26"
 rfd = "0.14"
 once_cell = "1"
 portable-atomic = { version = "1", features = ["float"] }
 parking_lot = "0.12"
-font-kit = "0.12"
+font-kit = "0.13"
 windows = { version = "0.54", features = ["Win32_UI_Input_KeyboardAndMouse"] }
 ron = "0.8"
 serde = { version = "1", features = ["derive"] }
