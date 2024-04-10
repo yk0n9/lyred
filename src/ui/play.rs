@@ -187,7 +187,7 @@ impl View for Play {
                                 COUNT[COUNT.len() - 1] / 1000 % 60
                             )),
                     )
-                    .drag_released()
+                    .drag_stopped()
                 {
                     TIME_SHIFT.store(true, Ordering::Relaxed);
                     LOCAL.store(self.progress, Ordering::Relaxed);
