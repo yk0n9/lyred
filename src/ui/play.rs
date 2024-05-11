@@ -260,7 +260,7 @@ impl View for Play {
         if is_pressed(self.function_key.play) {
             match STATE.load(Ordering::Relaxed) {
                 STOP => {
-                    if LOCAL.load(Ordering::Relaxed) == usize::MAX {
+                    if LOCAL.load(Ordering::Relaxed) == !0 {
                         STATE.store(PLAYING, Ordering::Relaxed);
                         self.midi.clone().playback(self.offset, self.mode);
                     }
