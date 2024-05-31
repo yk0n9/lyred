@@ -1,7 +1,7 @@
 use std::sync::atomic::Ordering;
 
-use eframe::{App, egui, Frame};
 use eframe::egui::{Context, Ui};
+use eframe::{egui, App, Frame};
 
 use crate::ui::play::Play;
 

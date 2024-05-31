@@ -1,5 +1,5 @@
-use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
@@ -8,9 +8,9 @@ use parking_lot::{Mutex, RwLock};
 use portable_atomic::AtomicF32;
 use rayon::slice::ParallelSliceMut;
 
-use crate::{COUNT, LOCAL, PAUSE, PLAYING, POOL, STOP, TIME_SHIFT};
 use crate::maps::get_map;
 use crate::ui::play::Mode;
+use crate::{COUNT, LOCAL, PAUSE, PLAYING, POOL, STOP, TIME_SHIFT};
 
 pub static SPEED: AtomicF32 = AtomicF32::new(1.0);
 // State:
@@ -95,11 +95,11 @@ impl Midi {
                 .add_filter("MIDI File", &["mid"])
                 .pick_file()
             {
-                *self.name.lock() =
-                    Some(path.file_name().unwrap().to_string_lossy().into_owned());
-
-                let file = std::fs::read(path).unwrap();
-                let smf = Smf::parse(&file).unwrap();
+                let file = std::fs::read(path).unwrap_or_default();
+                let Ok(smf) = Smf::parse(&file) else {
+                    return;
+                };
+                *self.name.lock() = Some(path.file_name().unwrap().to_string_lossy().into_owned());
                 let len = smf.tracks.len();
                 self.fps.store(
                     match smf.header.timing {
@@ -141,9 +141,7 @@ impl Midi {
                     .collect::<Vec<_>>();
 
                 self.merge_tracks(&(0..len).collect::<Vec<_>>());
-                let enables = vec![true; len].into_iter();
-                let range = (0..len).collect::<Vec<_>>().into_iter();
-                *self.track_num.write() = enables.zip(range).collect();
+                *self.track_num.write() = vec![true; len].into_iter().zip(0..len).collect();
             }
             self.hit_rate.store(self.detect(0), Ordering::Relaxed);
         });

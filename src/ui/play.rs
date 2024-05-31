@@ -1,17 +1,17 @@
 use std::sync::atomic::Ordering;
 
-use eframe::{CreationContext, egui};
-use eframe::egui::{FontId, Slider, Ui};
 use eframe::egui::FontFamily::Proportional;
 use eframe::egui::TextStyle::*;
+use eframe::egui::{FontId, Slider, Ui};
+use eframe::{egui, CreationContext};
 use serde::{Deserialize, Serialize};
 
-use crate::{COUNT, LOCAL, PAUSE, PLAYING, STOP, TIME_SHIFT};
 use crate::font::load_fonts;
 use crate::maps::is_pressed;
 use crate::midi::{Midi, SPEED, STATE};
 use crate::ui::View;
-use crate::util::{KEY_CODE, vk_display};
+use crate::util::{vk_display, KEY_CODE};
+use crate::{COUNT, LOCAL, PAUSE, PLAYING, STOP, TIME_SHIFT};
 
 #[derive(Debug, Clone)]
 pub struct Play {
@@ -69,7 +69,7 @@ impl Play {
             (Button, FontId::new(14.0, Proportional)),
             (Small, FontId::new(10.0, Proportional)),
         ]
-            .into();
+        .into();
         cc.egui_ctx.set_style(style);
 
         Self {
