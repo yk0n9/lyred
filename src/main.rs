@@ -5,7 +5,7 @@ use std::sync::Arc;
 use eframe::egui::{IconData, Vec2, ViewportBuilder};
 use eframe::NativeOptions;
 
-use lyred::ui::play::{FunctionKey, Play};
+use lyred::ui::play::Play;
 
 fn main() {
     run();
