@@ -8,10 +8,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::font::load_fonts;
 use crate::maps::is_pressed;
-use crate::midi::{Midi, SPEED, STATE};
+use crate::midi::{Midi, State, SPEED, STATE};
 use crate::ui::View;
 use crate::util::{vk_display, KEY_CODE};
-use crate::{COUNT, LOCAL, PAUSE, PLAYING, STOP, TIME_SHIFT};
+use crate::{COUNT, LOCAL, TIME_SHIFT};
 
 #[derive(Debug, Clone)]
 pub struct Play {
@@ -94,7 +94,7 @@ impl View for Play {
         ui.horizontal(|ui| {
             ui.label("选择MIDI文件");
             if ui.button("打开").clicked() {
-                STATE.store(STOP, Ordering::Relaxed);
+                STATE.store(State::Stop);
                 self.midi.clone().init();
                 self.offset = 0;
             }
@@ -120,7 +120,7 @@ impl View for Play {
                 self.speed = 1.0;
             }
         });
-        SPEED.store(self.speed, Ordering::Relaxed);
+        SPEED.store(self.speed);
         ui.horizontal(|ui| {
             let sub = is_pressed(189) || is_pressed(109);
             if !sub {
@@ -128,9 +128,9 @@ impl View for Play {
             }
             if ui.button("减速0.1x").clicked() || sub != self.control_key.sub {
                 self.control_key.sub = sub;
-                if SPEED.load(Ordering::Relaxed) > 0.1 {
+                if SPEED.load() > 0.1 {
                     self.speed -= 0.1;
-                    SPEED.store(self.speed, Ordering::Relaxed);
+                    SPEED.store(self.speed);
                 }
             }
             let add = is_pressed(187) || is_pressed(107);
@@ -140,7 +140,7 @@ impl View for Play {
             if ui.button("加速0.1x").clicked() || add != self.control_key.add {
                 self.control_key.add = add;
                 self.speed += 0.1;
-                SPEED.store(self.speed, Ordering::Relaxed);
+                SPEED.store(self.speed);
             }
         });
         ui.separator();
@@ -148,50 +148,43 @@ impl View for Play {
             ui.label(format!(
                 "偏移量: {} 命中率: {:.2}%",
                 self.offset,
-                self.midi.hit_rate.load(Ordering::Relaxed) * 100.0
+                self.midi.hit_rate.load() * 100.0
             ));
             if ui.button("还原偏移量").clicked() {
                 self.offset = 0;
-                self.midi
-                    .hit_rate
-                    .store(self.midi.detect(self.offset), Ordering::Relaxed);
+                self.midi.hit_rate.store(self.midi.detect(self.offset));
             }
         });
         if ui.button("向上调音").clicked() {
             self.offset += 1;
-            self.midi
-                .hit_rate
-                .store(self.midi.detect(self.offset), Ordering::Relaxed);
+            self.midi.hit_rate.store(self.midi.detect(self.offset));
         }
         if ui.button("向下调音").clicked() {
             self.offset -= 1;
-            self.midi
-                .hit_rate
-                .store(self.midi.detect(self.offset), Ordering::Relaxed);
+            self.midi.hit_rate.store(self.midi.detect(self.offset));
         }
         ui.toggle_value(&mut self.tracks_enable, "音轨列表");
         ui.separator();
         ui.label(self.state);
-        if STATE.load(Ordering::Relaxed) != STOP {
+        if STATE.load() != State::Stop {
             self.progress = LOCAL.load(Ordering::Relaxed);
-            unsafe {
-                if ui
-                    .add(
-                        Slider::new(&mut self.progress, 0..=COUNT.len() - 1)
-                            .show_value(false)
-                            .text(format!(
-                                "{:02}:{:02}/{:02}:{:02}",
-                                COUNT[LOCAL.load(Ordering::Relaxed)] / 60000,
-                                COUNT[LOCAL.load(Ordering::Relaxed)] / 1000 % 60,
-                                COUNT[COUNT.len() - 1] / 60000,
-                                COUNT[COUNT.len() - 1] / 1000 % 60
-                            )),
-                    )
-                    .drag_stopped()
-                {
-                    TIME_SHIFT.store(true, Ordering::Relaxed);
-                    LOCAL.store(self.progress, Ordering::Relaxed);
-                }
+            let count = unsafe { &*COUNT.as_ptr() };
+            if ui
+                .add(
+                    Slider::new(&mut self.progress, 0..=count.len() - 1)
+                        .show_value(false)
+                        .text(format!(
+                            "{:02}:{:02}/{:02}:{:02}",
+                            count[LOCAL.load(Ordering::Relaxed)] / 60000000,
+                            count[LOCAL.load(Ordering::Relaxed)] / 1000000 % 60,
+                            count[count.len() - 1] / 60000000,
+                            count[count.len() - 1] / 1000000 % 60
+                        )),
+                )
+                .drag_stopped()
+            {
+                TIME_SHIFT.store(true, Ordering::Relaxed);
+                LOCAL.store(self.progress, Ordering::Relaxed);
             }
         }
         ui.separator();
@@ -258,29 +251,29 @@ impl View for Play {
         ui.label("注意: 每±12个偏移量为一个八度");
 
         if is_pressed(self.function_key.play) {
-            match STATE.load(Ordering::Relaxed) {
-                STOP => {
+            match STATE.load() {
+                State::Stop => {
                     if LOCAL.load(Ordering::Relaxed) == !0 {
-                        STATE.store(PLAYING, Ordering::Relaxed);
+                        STATE.store(State::Playing);
                         self.midi.clone().playback(self.offset, self.mode);
                     }
                 }
-                PAUSE => STATE.store(PLAYING, Ordering::Relaxed),
+                State::Pause => STATE.store(State::Playing),
                 _ => {}
             }
         }
         if is_pressed(self.function_key.stop) {
-            STATE.store(STOP, Ordering::Relaxed);
+            STATE.store(State::Stop);
         }
         if is_pressed(self.function_key.pause) {
-            if let PLAYING = STATE.load(Ordering::Relaxed) {
-                STATE.store(PAUSE, Ordering::Relaxed);
+            if let State::Playing = STATE.load() {
+                STATE.store(State::Pause);
             }
         }
 
-        self.state = match STATE.load(Ordering::Relaxed) {
-            PLAYING => "播放中...",
-            PAUSE => "已暂停",
+        self.state = match STATE.load() {
+            State::Playing => "播放中...",
+            State::Pause => "已暂停",
             _ => "已停止",
         };
     }

@@ -1,23 +1,26 @@
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
 
+use crossbeam::atomic::AtomicCell;
 use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 use parking_lot::{Mutex, RwLock};
-use portable_atomic::AtomicF32;
 use rayon::slice::ParallelSliceMut;
 
 use crate::maps::get_map;
 use crate::ui::play::Mode;
-use crate::{COUNT, LOCAL, PAUSE, PLAYING, POOL, STOP, TIME_SHIFT};
+use crate::{COUNT, LOCAL, POOL, TIME_SHIFT};
 
-pub static SPEED: AtomicF32 = AtomicF32::new(1.0);
-// State:
-// 0 -> Stop
-// 1 -> Playing
-// 2 -> Pause
-pub static STATE: AtomicUsize = AtomicUsize::new(STOP);
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum State {
+    Playing,
+    Stop,
+    Pause,
+}
+
+pub static STATE: AtomicCell<State> = AtomicCell::new(State::Stop);
+pub static SPEED: AtomicCell<f32> = AtomicCell::new(1.0);
 
 const DEFAULT_TEMPO_MPQ: f32 = 500000.0;
 const DEFAULT_FPS: f32 = 480.0;
@@ -30,10 +33,10 @@ const MAP: &[i32] = &[
 pub struct Midi {
     pub name: Arc<Mutex<Option<String>>>,
     pub events: Arc<Mutex<Vec<Event>>>,
-    pub fps: Arc<AtomicF32>,
+    pub fps: Arc<AtomicCell<f32>>,
     pub tracks: Arc<Mutex<Vec<Vec<RawEvent>>>>,
     pub track_num: Arc<RwLock<Vec<(bool, usize)>>>,
-    pub hit_rate: Arc<AtomicF32>,
+    pub hit_rate: Arc<AtomicCell<f32>>,
 }
 
 impl Default for Midi {
@@ -72,14 +75,14 @@ impl Midi {
             let e = events[i];
             i += 1;
 
-            input_time += e.delay / SPEED.load(Ordering::Relaxed);
-            if let current @ 1.. = (input_time - start_time.elapsed().as_millis() as f32) as u64 {
-                sleep(Duration::from_millis(current));
+            input_time += e.delay / SPEED.load();
+            if let current @ 1.. = (input_time - start_time.elapsed().as_micros() as f32) as u64 {
+                sleep(Duration::from_micros(current));
             }
-            match STATE.load(Ordering::Relaxed) {
-                PLAYING => f(e.press),
-                PAUSE => {
-                    while STATE.load(Ordering::Relaxed) == PAUSE {}
+            match STATE.load() {
+                State::Playing => f(e.press),
+                State::Pause => {
+                    while STATE.load() == State::Pause {}
                     input_time = e.delay;
                     start_time = Instant::now();
                     i -= 1;
@@ -101,13 +104,10 @@ impl Midi {
                 };
                 *self.name.lock() = Some(path.file_name().unwrap().to_string_lossy().into_owned());
                 let len = smf.tracks.len();
-                self.fps.store(
-                    match smf.header.timing {
-                        Timing::Metrical(fps) => fps.as_int() as f32,
-                        _ => DEFAULT_FPS,
-                    },
-                    Ordering::Relaxed,
-                );
+                self.fps.store(match smf.header.timing {
+                    Timing::Metrical(fps) => fps.as_int() as f32,
+                    _ => DEFAULT_FPS,
+                });
 
                 *self.tracks.lock() = smf
                     .tracks
@@ -143,7 +143,7 @@ impl Midi {
                 self.merge_tracks(&(0..len).collect::<Vec<_>>());
                 *self.track_num.write() = vec![true; len].into_iter().zip(0..len).collect();
             }
-            self.hit_rate.store(self.detect(0), Ordering::Relaxed);
+            self.hit_rate.store(self.detect(0));
         });
     }
 
@@ -168,11 +168,7 @@ impl Midi {
             .into_iter()
             .filter_map(|event| match event.event {
                 ValidEvent::Note(press) => {
-                    let delay = Self::tick2millis(
-                        event.tick - tick,
-                        tempo,
-                        self.fps.load(Ordering::Relaxed),
-                    );
+                    let delay = Self::tick2micros(event.tick - tick, tempo, self.fps.load());
                     time += delay as usize;
                     count.push(time);
                     tick = event.tick;
@@ -184,17 +180,15 @@ impl Midi {
                 }
                 _ => None,
             })
-            .collect::<Vec<_>>();
-        unsafe {
-            COUNT = count;
-        }
+            .collect();
+        COUNT.store(count);
     }
 
     pub fn playback(self, offset: i32, mode: Mode) {
         POOL.spawn(move || {
             let send = get_map(mode);
             self.play(|key| send(key + offset));
-            STATE.store(STOP, Ordering::Relaxed);
+            STATE.store(State::Stop);
             LOCAL.store(!0, Ordering::Relaxed);
         });
     }
@@ -211,11 +205,11 @@ impl Midi {
         count as f32 / all
     }
 
-    /// 1. The difference in milliseconds between two events
-    /// 2. The time in milliseconds this event was in track
+    /// 1. The difference in microseconds between two events
+    /// 2. The time in microseconds this event was in track
     #[inline]
-    fn tick2millis(tick: f32, tempo_mpq: f32, fps: f32) -> f32 {
-        tick * tempo_mpq / fps / 1000.0
+    fn tick2micros(tick: f32, tempo_mpq: f32, fps: f32) -> f32 {
+        tick * tempo_mpq / fps
     }
 
     /// 1. MPQ-Tempo to BPM-Tempo

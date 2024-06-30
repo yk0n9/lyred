@@ -1,5 +1,3 @@
-use std::sync::atomic::Ordering;
-
 use eframe::egui::{Context, Ui};
 use eframe::{egui, App, Frame};
 
@@ -32,9 +30,7 @@ impl App for Play {
                         .filter_map(|(enable, index)| if *enable { Some(*index) } else { None })
                         .collect::<Vec<_>>();
                     self.midi.merge_tracks(&range);
-                    self.midi
-                        .hit_rate
-                        .store(self.midi.detect(self.offset), Ordering::Relaxed);
+                    self.midi.hit_rate.store(self.midi.detect(self.offset));
                     self.notify_merge = false;
                 }
             });
