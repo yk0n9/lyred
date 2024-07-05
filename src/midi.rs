@@ -23,7 +23,6 @@ pub static STATE: AtomicCell<State> = AtomicCell::new(State::Stop);
 pub static SPEED: AtomicCell<f32> = AtomicCell::new(1.0);
 
 const DEFAULT_TEMPO_MPQ: f32 = 500000.0;
-const DEFAULT_FPS: f32 = 480.0;
 const MAP: &[i32] = &[
     24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64,
     65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95,
@@ -106,7 +105,7 @@ impl Midi {
                 let len = smf.tracks.len();
                 self.fps.store(match smf.header.timing {
                     Timing::Metrical(fps) => fps.as_int() as f32,
-                    _ => DEFAULT_FPS,
+                    Timing::Timecode(_, timing) => (timing & 0xFF) as f32,
                 });
 
                 *self.tracks.lock() = smf
