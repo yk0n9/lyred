@@ -195,7 +195,6 @@ impl View for Play {
             egui::ComboBox::from_id_source(0)
                 .selected_text(vk_display(self.function_key.play))
                 .show_ui(ui, |ui| {
-                    ui.style_mut().wrap = Some(false);
                     KEY_CODE
                         .iter()
                         .filter(|k| **k != self.function_key.pause && **k != self.function_key.stop)
@@ -214,7 +213,6 @@ impl View for Play {
             egui::ComboBox::from_id_source(1)
                 .selected_text(vk_display(self.function_key.pause))
                 .show_ui(ui, |ui| {
-                    ui.style_mut().wrap = Some(false);
                     KEY_CODE
                         .iter()
                         .filter(|k| **k != self.function_key.play && **k != self.function_key.stop)
@@ -233,7 +231,6 @@ impl View for Play {
             egui::ComboBox::from_id_source(2)
                 .selected_text(vk_display(self.function_key.stop))
                 .show_ui(ui, |ui| {
-                    ui.style_mut().wrap = Some(false);
                     KEY_CODE
                         .iter()
                         .filter(|k| **k != self.function_key.play && **k != self.function_key.pause)

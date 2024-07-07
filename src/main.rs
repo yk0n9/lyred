@@ -37,7 +37,7 @@ fn run() {
             if let Ok(file) = std::fs::read_to_string("config.ron") {
                 play.function_key = ron::from_str(&file).unwrap_or_default();
             }
-            Box::new(play)
+            Ok(Box::new(play))
         }),
     )
     .unwrap();
