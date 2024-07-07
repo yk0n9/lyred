@@ -105,7 +105,7 @@ impl Midi {
                 let len = smf.tracks.len();
                 self.fps.store(match smf.header.timing {
                     Timing::Metrical(fps) => fps.as_int() as f32,
-                    Timing::Timecode(_, timing) => (timing & 0xFF) as f32,
+                    Timing::Timecode(fps, timing) => (timing & 0xFF) as f32 * fps.as_f32(),
                 });
 
                 *self.tracks.lock() = smf
