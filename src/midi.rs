@@ -140,7 +140,7 @@ impl Midi {
                     .collect::<Vec<_>>();
 
                 self.merge_tracks(&(0..len).collect::<Vec<_>>());
-                *self.track_num.write() = vec![true; len].into_iter().zip(0..len).collect();
+                *self.track_num.write() = (0..len).map(|index| (true, index)).collect();
             }
             self.hit_rate.store(self.detect(0));
         });
