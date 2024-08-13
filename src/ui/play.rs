@@ -99,12 +99,12 @@ impl View for Play {
                 self.offset = 0;
             }
             if ui.button("从MIDI转换").clicked() {
-                if let Some(name) = self.midi.clone().name.lock().as_ref() {
+                if let Some(name) = self.midi.name.read().as_ref() {
                     self.midi.clone().convert_from_midi(name.to_string());
                 }
             }
         });
-        if let Some(name) = self.midi.clone().name.lock().as_ref() {
+        if let Some(name) = self.midi.name.read().as_ref() {
             ui.label(&format!("当前文件: {}", name));
         }
         ui.separator();

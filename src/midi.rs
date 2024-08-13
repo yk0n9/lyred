@@ -30,7 +30,7 @@ const MAP: &[i32] = &[
 
 #[derive(Debug, Clone)]
 pub struct Midi {
-    pub name: Arc<Mutex<Option<String>>>,
+    pub name: Arc<RwLock<Option<String>>>,
     pub events: Arc<Mutex<Vec<Event>>>,
     pub fps: Arc<AtomicCell<f32>>,
     pub tracks: Arc<Mutex<Vec<Vec<RawEvent>>>>,
@@ -48,7 +48,7 @@ impl Midi {
     #[inline]
     pub fn new() -> Self {
         Midi {
-            name: Arc::new(Mutex::new(None)),
+            name: Arc::new(RwLock::new(None)),
             events: Arc::new(Mutex::new(vec![])),
             fps: Arc::new(Default::default()),
             tracks: Arc::new(Mutex::new(vec![])),
@@ -101,7 +101,12 @@ impl Midi {
                 let Ok(smf) = Smf::parse(&file) else {
                     return;
                 };
-                *self.name.lock() = Some(path.file_name().unwrap().to_string_lossy().into_owned());
+                self.name.write().replace(
+                    path.file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .into_owned(),
+                );
                 let len = smf.tracks.len();
                 self.fps.store(match smf.header.timing {
                     Timing::Metrical(fps) => fps.as_int() as f32,
