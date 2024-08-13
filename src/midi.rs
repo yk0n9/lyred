@@ -180,6 +180,7 @@ impl Midi {
                 _ => None,
             })
             .collect();
+        drop(COUNT.take());
         COUNT.store(count);
     }
 
