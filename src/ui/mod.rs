@@ -2,6 +2,7 @@ use eframe::egui::{Context, Ui};
 use eframe::{egui, App, Frame};
 
 use crate::ui::play::Play;
+use crate::COUNT;
 
 pub mod play;
 
@@ -37,6 +38,7 @@ impl App for Play {
     }
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
+        drop(COUNT.take());
         ron::to_string(&self.function_key)
             .inspect(|config| {
                 std::fs::write("config.ron", config).ok();
