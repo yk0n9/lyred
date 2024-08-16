@@ -34,7 +34,7 @@ pub struct Midi {
     pub events: Arc<Mutex<Vec<Event>>>,
     pub fps: Arc<AtomicCell<f32>>,
     pub tracks: Arc<Mutex<Vec<Vec<RawEvent>>>>,
-    pub track_num: Arc<RwLock<Vec<(bool, usize)>>>,
+    pub track_num: Arc<RwLock<Vec<(bool, usize, String)>>>,
     pub hit_rate: Arc<AtomicCell<f32>>,
 }
 
@@ -107,21 +107,27 @@ impl Midi {
                         .to_string_lossy()
                         .into_owned(),
                 );
-                let len = smf.tracks.len();
                 self.fps.store(match smf.header.timing {
                     Timing::Metrical(fps) => fps.as_int() as f32,
                     Timing::Timecode(fps, timing) => (timing & 0xFF) as f32 * fps.as_f32(),
                 });
 
+                let mut track_names = vec![];
+                let mut track_num = 0;
                 *self.tracks.lock() = smf
                     .tracks
                     .into_iter()
                     .map(|track| {
                         let mut tick = 0.0;
-                        track
+                        let mut track_name = String::from("Untitle");
+                        let events = track
                             .into_iter()
                             .map(|e| {
                                 let event = match e.kind {
+                                    TrackEventKind::Meta(MetaMessage::TrackName(name)) => {
+                                        track_name = String::from_utf8_lossy(name).to_string();
+                                        ValidEvent::Other
+                                    }
                                     TrackEventKind::Meta(MetaMessage::Tempo(t)) => {
                                         ValidEvent::Tempo(t.as_int() as f32)
                                     }
@@ -140,12 +146,15 @@ impl Midi {
                                 tick += e.delta.as_int() as f32;
                                 RawEvent { event, tick }
                             })
-                            .collect::<Vec<_>>()
+                            .collect::<Vec<_>>();
+                        track_names.push((true, track_num, track_name));
+                        track_num += 1;
+                        events
                     })
                     .collect::<Vec<_>>();
 
-                self.merge_tracks(&(0..len).collect::<Vec<_>>());
-                *self.track_num.write() = (0..len).map(|index| (true, index)).collect();
+                self.merge_tracks(&(0..track_names.len()).collect::<Vec<_>>());
+                *self.track_num.write() = track_names;
             }
             self.hit_rate.store(self.detect(0));
         });

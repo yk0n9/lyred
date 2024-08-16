@@ -17,8 +17,11 @@ impl App for Play {
         egui::Window::new("音轨")
             .open(&mut self.tracks_enable)
             .show(ctx, |ui| {
-                for (enable, index) in self.midi.track_num.write().iter_mut() {
-                    if ui.checkbox(enable, format!("Track {}", index)).changed() {
+                for (enable, index, name) in self.midi.track_num.write().iter_mut() {
+                    if ui
+                        .checkbox(enable, format!("Track {}: {}", index, name))
+                        .changed()
+                    {
                         self.notify_merge = true;
                     }
                 }
@@ -28,7 +31,7 @@ impl App for Play {
                         .track_num
                         .read()
                         .iter()
-                        .filter_map(|(enable, index)| if *enable { Some(*index) } else { None })
+                        .filter_map(|(enable, index, _)| if *enable { Some(*index) } else { None })
                         .collect::<Vec<_>>();
                     self.midi.merge_tracks(&range);
                     self.midi.hit_rate.store(self.midi.detect(self.offset));
