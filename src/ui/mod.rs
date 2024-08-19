@@ -1,4 +1,4 @@
-use eframe::egui::{Context, Ui};
+use eframe::egui::{Context, Separator, Ui};
 use eframe::{egui, App, Frame};
 
 use crate::ui::play::Play;
@@ -38,6 +38,10 @@ impl App for Play {
             .open(&mut self.pitch_enable)
             .show(ctx, |ui| {
                 if pitch_enable {
+                    if ui.button("还原音调").clicked() {
+                        *self.midi.track_keys.write() = self.midi.keys_backup.read().to_vec();
+                        self.notify_merge = true;
+                    }
                     egui::ScrollArea::both()
                         .auto_shrink([true, true])
                         .show(ui, |ui| {
@@ -47,20 +51,29 @@ impl App for Play {
                                     ui.horizontal(|ui| {
                                         for (_, key, real) in keys.iter_mut() {
                                             ui.vertical(|ui| {
-                                                ui.label(format!("key: {}", key));
-                                                ui.horizontal(|ui| {
-                                                    if ui.button("-").clicked() {
-                                                        *real -= 1;
-                                                        *key -= 1;
-                                                        self.notify_merge = true;
-                                                    }
-                                                    if ui.button("+").clicked() {
-                                                        *real += 1;
-                                                        *key += 1;
-                                                        self.notify_merge = true;
-                                                    }
-                                                });
+                                                ui.label(format!(
+                                                    "{}{}",
+                                                    if *key > 0 {
+                                                        "#"
+                                                    } else if *key < 0 {
+                                                        "b"
+                                                    } else {
+                                                        ""
+                                                    },
+                                                    key.abs()
+                                                ));
+                                                if ui.button("升调").clicked() {
+                                                    *real += 1;
+                                                    *key += 1;
+                                                    self.notify_merge = true;
+                                                }
+                                                if ui.button("降调").clicked() {
+                                                    *real -= 1;
+                                                    *key -= 1;
+                                                    self.notify_merge = true;
+                                                }
                                             });
+                                            ui.add(Separator::default().vertical());
                                         }
                                     });
                                 });

@@ -1,4 +1,3 @@
-use std::ops::Deref;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::thread::sleep;
@@ -36,7 +35,8 @@ pub struct Midi {
     pub fps: Arc<AtomicCell<f32>>,
     pub tracks: Arc<Mutex<Vec<Vec<RawEvent>>>>,
     pub track_num: Arc<RwLock<Vec<(bool, usize, String)>>>,
-    pub track_keys: Arc<RwLock<Vec<Vec<(usize, i32, i32)>>>>,
+    pub track_keys: Arc<RwLock<Vec<Vec<(u32, i32, i32)>>>>,
+    pub keys_backup: Arc<RwLock<Vec<Vec<(u32, i32, i32)>>>>,
     pub hit_rate: Arc<AtomicCell<f32>>,
 }
 
@@ -56,6 +56,7 @@ impl Midi {
             tracks: Arc::new(Mutex::new(vec![])),
             track_num: Arc::new(RwLock::new(vec![])),
             track_keys: Arc::new(RwLock::new(vec![])),
+            keys_backup: Arc::new(RwLock::new(vec![])),
             hit_rate: Arc::new(Default::default()),
         }
     }
@@ -139,10 +140,7 @@ impl Midi {
                                         ValidEvent::Tempo(t.as_int())
                                     }
                                     TrackEventKind::Meta(MetaMessage::KeySignature(key, _)) => {
-                                        keys.push((tick as usize, key as i32, 0));
-                                        ValidEvent::Other
-                                    }
-                                    TrackEventKind::Meta(MetaMessage::EndOfTrack) => {
+                                        keys.push((tick, key as i32, 0));
                                         ValidEvent::Other
                                     }
                                     TrackEventKind::Midi {
@@ -166,7 +164,8 @@ impl Midi {
                     })
                     .collect::<Vec<_>>();
 
-                *self.track_keys.write() = track_keys;
+                *self.track_keys.write() = track_keys.to_vec();
+                *self.keys_backup.write() = track_keys;
                 *self.track_num.write() = track_num;
                 self.merge_tracks(&(0..track_len).collect::<Vec<_>>(), 0);
             }
@@ -175,21 +174,31 @@ impl Midi {
 
     pub fn merge_tracks(&self, indices: &[usize], offset: i32) {
         let mut current = vec![];
+        let mut tracks = self.tracks.lock().to_vec();
         let track_keys = self.track_keys.read();
-        println!("{:?}", track_keys.deref());
-        for (index, events) in self.tracks.lock().iter_mut().enumerate() {
-            let mut last_tick = 0;
-            track_keys[index].iter().for_each(|(tick, _, real)| {
-                events
-                    .iter_mut()
-                    .filter(|event| (last_tick..*tick).contains(&(event.tick as usize)))
-                    .for_each(|event| {
-                        if let ValidEvent::Note(ref mut note) = event.event {
-                            *note += *real;
+        for (index, events) in tracks.iter_mut().enumerate() {
+            let mut keys = track_keys[index].iter().peekable();
+            while let Some(next) = keys.next() {
+                *events = events
+                    .iter()
+                    .map(|event| {
+                        let cond = if let Some(peek) = keys.peek() {
+                            event.tick > next.0 && event.tick < peek.0
+                        } else {
+                            event.tick > next.0
+                        };
+                        if let ValidEvent::Note(note) = event.event {
+                            if cond {
+                                return RawEvent {
+                                    event: ValidEvent::Note(note + next.2),
+                                    tick: event.tick,
+                                };
+                            }
                         }
-                    });
-                last_tick = *tick;
-            });
+                        *event
+                    })
+                    .collect();
+            }
             for event in events {
                 if indices.contains(&index) {
                     current.push(*event);
@@ -221,7 +230,6 @@ impl Midi {
                 _ => None,
             })
             .collect();
-        drop(COUNT.take());
         COUNT.store(count);
         self.hit_rate.store(self.detect(offset));
     }
