@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::thread::sleep;
@@ -22,7 +23,7 @@ pub enum State {
 pub static STATE: AtomicCell<State> = AtomicCell::new(State::Stop);
 pub static SPEED: AtomicCell<f32> = AtomicCell::new(1.0);
 
-const DEFAULT_TEMPO_MPQ: f32 = 500000.0;
+const DEFAULT_TEMPO_MPQ: u32 = 500000;
 const MAP: &[i32] = &[
     24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64,
     65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95,
@@ -122,23 +123,23 @@ impl Midi {
                     .into_iter()
                     .enumerate()
                     .map(|(index, track)| {
-                        let mut tick = 0.0;
+                        let mut tick = 0;
                         let mut track_name = String::from("Untitle");
                         let mut keys = vec![];
                         let events = track
                             .into_iter()
-                            .enumerate()
-                            .map(|(index, e)| {
+                            .map(|e| {
+                                tick += e.delta.as_int();
                                 let event = match e.kind {
                                     TrackEventKind::Meta(MetaMessage::TrackName(name)) => {
                                         track_name = String::from_utf8_lossy(name).to_string();
                                         ValidEvent::Other
                                     }
                                     TrackEventKind::Meta(MetaMessage::Tempo(t)) => {
-                                        ValidEvent::Tempo(t.as_int() as f32)
+                                        ValidEvent::Tempo(t.as_int())
                                     }
                                     TrackEventKind::Meta(MetaMessage::KeySignature(key, _)) => {
-                                        keys.push((index, key as i32, 0));
+                                        keys.push((tick as usize, key as i32, 0));
                                         ValidEvent::Other
                                     }
                                     TrackEventKind::Meta(MetaMessage::EndOfTrack) => {
@@ -156,7 +157,6 @@ impl Midi {
                                     }
                                     _ => ValidEvent::Other,
                                 };
-                                tick += e.delta.as_int() as f32;
                                 RawEvent { event, tick }
                             })
                             .collect::<Vec<_>>();
@@ -176,15 +176,19 @@ impl Midi {
     pub fn merge_tracks(&self, indices: &[usize], offset: i32) {
         let mut current = vec![];
         let track_keys = self.track_keys.read();
+        println!("{:?}", track_keys.deref());
         for (index, events) in self.tracks.lock().iter_mut().enumerate() {
-            let mut last_index = 0;
-            track_keys[index].iter().for_each(|(index, _, real)| {
-                events[last_index..*index].iter_mut().for_each(|event| {
-                    if let ValidEvent::Note(ref mut note) = event.event {
-                        *note += *real;
-                    }
-                });
-                last_index = *index;
+            let mut last_tick = 0;
+            track_keys[index].iter().for_each(|(tick, _, real)| {
+                events
+                    .iter_mut()
+                    .filter(|event| (last_tick..*tick).contains(&(event.tick as usize)))
+                    .for_each(|event| {
+                        if let ValidEvent::Note(ref mut note) = event.event {
+                            *note += *real;
+                        }
+                    });
+                last_tick = *tick;
             });
             for event in events {
                 if indices.contains(&index) {
@@ -196,7 +200,7 @@ impl Midi {
         }
         current.par_sort_by_key(|e| e.tick as usize);
 
-        let mut tick = 0.0;
+        let mut tick = 0;
         let mut tempo = DEFAULT_TEMPO_MPQ;
         let mut time = 0;
         let mut count = Vec::with_capacity(current.len());
@@ -246,8 +250,8 @@ impl Midi {
     /// 1. The difference in microseconds between two events
     /// 2. The time in microseconds this event was in track
     #[inline]
-    fn tick2micros(tick: f32, tempo_mpq: f32, fps: f32) -> f32 {
-        tick * tempo_mpq / fps
+    fn tick2micros(tick: u32, tempo_mpq: u32, fps: f32) -> f32 {
+        (tick * tempo_mpq) as f32 / fps
     }
 
     /// 1. MPQ-Tempo to BPM-Tempo
@@ -281,14 +285,14 @@ impl Midi {
 #[derive(Debug, Copy, Clone)]
 enum ValidEvent {
     Note(i32),
-    Tempo(f32),
+    Tempo(u32),
     Other,
 }
 
 #[derive(Debug, Copy, Clone)]
 pub struct RawEvent {
     event: ValidEvent,
-    tick: f32,
+    tick: u32,
 }
 
 #[derive(Debug, Copy, Clone)]
