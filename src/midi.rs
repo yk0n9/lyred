@@ -35,6 +35,7 @@ pub struct Midi {
     pub fps: Arc<AtomicCell<f32>>,
     pub tracks: Arc<Mutex<Vec<Vec<RawEvent>>>>,
     pub track_num: Arc<RwLock<Vec<(bool, usize, String)>>>,
+    pub track_keys: Arc<RwLock<Vec<Vec<(usize, i32, i32)>>>>,
     pub hit_rate: Arc<AtomicCell<f32>>,
 }
 
@@ -53,6 +54,7 @@ impl Midi {
             fps: Arc::new(Default::default()),
             tracks: Arc::new(Mutex::new(vec![])),
             track_num: Arc::new(RwLock::new(vec![])),
+            track_keys: Arc::new(RwLock::new(vec![])),
             hit_rate: Arc::new(Default::default()),
         }
     }
@@ -111,18 +113,22 @@ impl Midi {
                     Timing::Metrical(fps) => fps.as_int() as f32,
                     Timing::Timecode(fps, timing) => (timing & 0xFF) as f32 * fps.as_f32(),
                 });
+                let track_len = smf.tracks.len();
 
-                let mut track_names = vec![];
-                let mut track_num = 0;
+                let mut track_keys = Vec::with_capacity(track_len);
+                let mut track_num = Vec::with_capacity(track_len);
                 *self.tracks.lock() = smf
                     .tracks
                     .into_iter()
-                    .map(|track| {
+                    .enumerate()
+                    .map(|(index, track)| {
                         let mut tick = 0.0;
                         let mut track_name = String::from("Untitle");
+                        let mut keys = vec![];
                         let events = track
                             .into_iter()
-                            .map(|e| {
+                            .enumerate()
+                            .map(|(index, e)| {
                                 let event = match e.kind {
                                     TrackEventKind::Meta(MetaMessage::TrackName(name)) => {
                                         track_name = String::from_utf8_lossy(name).to_string();
@@ -130,6 +136,13 @@ impl Midi {
                                     }
                                     TrackEventKind::Meta(MetaMessage::Tempo(t)) => {
                                         ValidEvent::Tempo(t.as_int() as f32)
+                                    }
+                                    TrackEventKind::Meta(MetaMessage::KeySignature(key, _)) => {
+                                        keys.push((index, key as i32, 0));
+                                        ValidEvent::Other
+                                    }
+                                    TrackEventKind::Meta(MetaMessage::EndOfTrack) => {
+                                        ValidEvent::Other
                                     }
                                     TrackEventKind::Midi {
                                         message: MidiMessage::NoteOn { key, vel },
@@ -147,22 +160,32 @@ impl Midi {
                                 RawEvent { event, tick }
                             })
                             .collect::<Vec<_>>();
-                        track_names.push((true, track_num, track_name));
-                        track_num += 1;
+                        track_keys.push(keys);
+                        track_num.push((true, index, track_name));
                         events
                     })
                     .collect::<Vec<_>>();
 
-                self.merge_tracks(&(0..track_names.len()).collect::<Vec<_>>());
-                *self.track_num.write() = track_names;
+                *self.track_keys.write() = track_keys;
+                *self.track_num.write() = track_num;
+                self.merge_tracks(&(0..track_len).collect::<Vec<_>>(), 0);
             }
-            self.hit_rate.store(self.detect(0));
         });
     }
 
-    pub fn merge_tracks(&self, indices: &[usize]) {
+    pub fn merge_tracks(&self, indices: &[usize], offset: i32) {
         let mut current = vec![];
-        for (index, events) in self.tracks.lock().iter().enumerate() {
+        let track_keys = self.track_keys.read();
+        for (index, events) in self.tracks.lock().iter_mut().enumerate() {
+            let mut last_index = 0;
+            track_keys[index].iter().for_each(|(index, _, real)| {
+                events[last_index..*index].iter_mut().for_each(|event| {
+                    if let ValidEvent::Note(ref mut note) = event.event {
+                        *note += *real;
+                    }
+                });
+                last_index = *index;
+            });
             for event in events {
                 if indices.contains(&index) {
                     current.push(*event);
@@ -196,6 +219,7 @@ impl Midi {
             .collect();
         drop(COUNT.take());
         COUNT.store(count);
+        self.hit_rate.store(self.detect(offset));
     }
 
     pub fn playback(self, offset: i32, mode: Mode) {
@@ -235,6 +259,22 @@ impl Midi {
             tempo = 1.0;
         }
         60000000.0 / tempo
+    }
+
+    pub fn current_range(&self) -> Vec<usize> {
+        self.track_num
+            .read()
+            .iter()
+            .filter_map(
+                |(enable, index, _)| {
+                    if *enable {
+                        Some(*index)
+                    } else {
+                        None
+                    }
+                },
+            )
+            .collect()
     }
 }
 

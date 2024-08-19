@@ -20,6 +20,7 @@ pub struct Play {
     pub mode: Mode,
     pub state: &'static str,
     pub tracks_enable: bool,
+    pub pitch_enable: bool,
     pub offset: i32,
     pub notify_merge: bool,
     pub function_key: FunctionKey,
@@ -78,6 +79,7 @@ impl Play {
             mode: Mode::GenShin,
             state: "已停止",
             tracks_enable: false,
+            pitch_enable: false,
             offset: 0,
             notify_merge: false,
             function_key: FunctionKey::default(),
@@ -164,21 +166,24 @@ impl View for Play {
             self.midi.hit_rate.store(self.midi.detect(self.offset));
         }
         ui.toggle_value(&mut self.tracks_enable, "音轨列表");
+        ui.toggle_value(&mut self.pitch_enable, "音调列表");
         ui.separator();
         ui.label(self.state);
         if STATE.load() != State::Stop {
             self.progress = LOCAL.load(Ordering::Relaxed);
             let count = unsafe { &*COUNT.as_ptr() };
+            let current = self.progress;
+            let len = count.len().saturating_sub(1);
             if ui
                 .add(
-                    Slider::new(&mut self.progress, 0..=count.len() - 1)
+                    Slider::new(&mut self.progress, 0..=len)
                         .show_value(false)
                         .text(format!(
                             "{:02}:{:02}/{:02}:{:02}",
-                            count[LOCAL.load(Ordering::Relaxed)] / 60000000,
-                            count[LOCAL.load(Ordering::Relaxed)] / 1000000 % 60,
-                            count[count.len() - 1] / 60000000,
-                            count[count.len() - 1] / 1000000 % 60
+                            count[current] / 60000000,
+                            count[current] / 1000000 % 60,
+                            count[len] / 60000000,
+                            count[len] / 1000000 % 60
                         )),
                 )
                 .drag_stopped()
