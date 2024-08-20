@@ -35,12 +35,12 @@ pub struct Midi {
     pub fps: Arc<AtomicCell<f32>>,
     pub tracks: Arc<RwLock<Vec<Vec<RawEvent>>>>,
     pub track_num: Arc<RwLock<Vec<(bool, usize, String)>>>,
-    pub track_keys: Arc<RwLock<Vec<Vec<TrackKeys>>>>,
+    pub track_keys: Arc<RwLock<Vec<Vec<TrackKey>>>>,
     pub hit_rate: Arc<AtomicCell<f32>>,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct TrackKeys {
+pub struct TrackKey {
     pub tick: u32,
     pub key: i32,
     pub backup: i32,
@@ -146,7 +146,7 @@ impl Midi {
                                         ValidEvent::Tempo(t.as_int())
                                     }
                                     TrackEventKind::Meta(MetaMessage::KeySignature(key, _)) => {
-                                        keys.push(TrackKeys {
+                                        keys.push(TrackKey {
                                             tick,
                                             key: key as i32,
                                             backup: key as i32,

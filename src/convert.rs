@@ -9,41 +9,26 @@ impl Midi {
     pub fn convert_from_midi(self, name: String) {
         POOL.spawn(move || {
             let mut res = String::new();
-            let events = self.events.read();
-            let mut iter = events.iter().peekable();
+            let mut cache = String::new();
             let mut count = 0;
-            while let Some(e) = iter.next() {
-                if e.delay != 0.0 {
-                    let mut cache = String::new();
-                    push(&mut cache, e);
-                    while let Some(e) = iter.peek() {
-                        if e.delay != 0.0 {
-                            break;
-                        }
-                        push(&mut cache, e);
-                        iter.next();
+
+            self.events.read().iter().for_each(|event| {
+                if event.delay != 0.0 {
+                    if !cache.is_empty() {
+                        let s = if count > 1 {
+                            format!("[{cache}] ")
+                        } else {
+                            format!("{cache} ")
+                        };
+                        res.push_str(&s);
                     }
-                    match cache.len() {
-                        0 => count += 1,
-                        _ => {
-                            match count {
-                                0 => {}
-                                1 => res.push_str("- "),
-                                2 => res.push_str("/ "),
-                                _ => res.push_str("\n\n"),
-                            }
-                            count = 0;
-                            match cache.len() {
-                                1 => {
-                                    res.push_str(&cache);
-                                    res.push(' ');
-                                }
-                                _ => res.push_str(&format!("[{}] ", cache)),
-                            }
-                        }
-                    }
+                    cache = format!("{} ", event.get_key());
+                    count = 1;
+                } else {
+                    cache.push_str(&format!("{} ", event.get_key()));
+                    count += 1;
                 }
-            }
+            });
 
             let phone = res
                 .replace('q', "+1")
@@ -85,50 +70,52 @@ impl Midi {
     }
 }
 
-fn push(res: &mut String, e: &Event) {
-    match e.press {
-        24 => res.push('z'),
-        26 => res.push('x'),
-        28 => res.push('c'),
-        29 => res.push('v'),
-        31 => res.push('b'),
-        33 => res.push('n'),
-        35 => res.push('m'),
-        36 => res.push('z'),
-        38 => res.push('x'),
-        40 => res.push('c'),
-        41 => res.push('v'),
-        43 => res.push('b'),
-        45 => res.push('n'),
-        47 => res.push('m'),
-        48 => res.push('z'),
-        50 => res.push('x'),
-        52 => res.push('c'),
-        53 => res.push('v'),
-        55 => res.push('b'),
-        57 => res.push('n'),
-        59 => res.push('m'),
-        60 => res.push('a'),
-        62 => res.push('s'),
-        64 => res.push('d'),
-        65 => res.push('f'),
-        67 => res.push('g'),
-        69 => res.push('h'),
-        71 => res.push('j'),
-        72 => res.push('q'),
-        74 => res.push('w'),
-        76 => res.push('e'),
-        77 => res.push('r'),
-        79 => res.push('t'),
-        81 => res.push('y'),
-        83 => res.push('u'),
-        84 => res.push('q'),
-        86 => res.push('w'),
-        88 => res.push('e'),
-        89 => res.push('r'),
-        91 => res.push('t'),
-        93 => res.push('y'),
-        95 => res.push('u'),
-        _ => {}
+impl Event {
+    fn get_key(&self) -> &'static str {
+        match self.press {
+            24 => "z",
+            26 => "x",
+            28 => "c",
+            29 => "v",
+            31 => "b",
+            33 => "n",
+            35 => "m",
+            36 => "z",
+            38 => "x",
+            40 => "c",
+            41 => "v",
+            43 => "b",
+            45 => "n",
+            47 => "m",
+            48 => "z",
+            50 => "x",
+            52 => "c",
+            53 => "v",
+            55 => "b",
+            57 => "n",
+            59 => "m",
+            60 => "a",
+            62 => "s",
+            64 => "d",
+            65 => "f",
+            67 => "g",
+            69 => "h",
+            71 => "j",
+            72 => "q",
+            74 => "w",
+            76 => "e",
+            77 => "r",
+            79 => "t",
+            81 => "y",
+            83 => "u",
+            84 => "q",
+            86 => "w",
+            88 => "e",
+            89 => "r",
+            91 => "t",
+            93 => "y",
+            95 => "u",
+            _ => "",
+        }
     }
 }
