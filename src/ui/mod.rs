@@ -39,7 +39,12 @@ impl App for Play {
             .show(ctx, |ui| {
                 if pitch_enable {
                     if ui.button("还原音调").clicked() {
-                        *self.midi.track_keys.write() = self.midi.keys_backup.read().to_vec();
+                        self.midi.track_keys.write().iter_mut().for_each(|keys| {
+                            keys.iter_mut().for_each(|key| {
+                                key.key = key.backup;
+                                key.real = 0;
+                            });
+                        });
                         self.notify_merge = true;
                     }
                     egui::ScrollArea::both()
@@ -49,27 +54,27 @@ impl App for Play {
                             {
                                 ui.collapsing(format!("Track {index}"), |ui| {
                                     ui.horizontal(|ui| {
-                                        for (_, key, real) in keys.iter_mut() {
+                                        for key in keys.iter_mut() {
                                             ui.vertical(|ui| {
                                                 ui.label(format!(
                                                     "{}{}",
-                                                    if *key > 0 {
+                                                    if key.key > 0 {
                                                         "#"
-                                                    } else if *key < 0 {
+                                                    } else if key.key < 0 {
                                                         "b"
                                                     } else {
                                                         ""
                                                     },
-                                                    key.abs()
+                                                    key.key.abs()
                                                 ));
                                                 if ui.button("升调").clicked() {
-                                                    *real += 1;
-                                                    *key += 1;
+                                                    key.real += 1;
+                                                    key.key += 1;
                                                     self.notify_merge = true;
                                                 }
                                                 if ui.button("降调").clicked() {
-                                                    *real -= 1;
-                                                    *key -= 1;
+                                                    key.real -= 1;
+                                                    key.key -= 1;
                                                     self.notify_merge = true;
                                                 }
                                             });
