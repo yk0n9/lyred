@@ -188,34 +188,29 @@ impl Midi {
         let track_keys = self.track_keys.read();
         for (index, events) in tracks.iter_mut().enumerate() {
             let mut keys = track_keys[index].iter().peekable();
-            while let Some(next) = keys.next() {
-                *events = events
-                    .iter()
-                    .map(|event| {
-                        let cond = if let Some(peek) = keys.peek() {
-                            event.tick >= next.tick && event.tick < peek.tick
-                        } else {
-                            event.tick >= next.tick
-                        };
-                        if let ValidEvent::Note(note) = event.event {
-                            if cond {
-                                return RawEvent {
-                                    event: ValidEvent::Note(note + next.real),
-                                    tick: event.tick,
-                                };
-                            }
+            let mut next = keys.next();
+            events.iter_mut().for_each(|event| {
+                let mut cond = true;
+                if let Some(next) = next {
+                    cond = if let Some(peek) = keys.peek() {
+                        event.tick >= next.tick && event.tick < peek.tick
+                    } else {
+                        event.tick >= next.tick
+                    };
+                    if let ValidEvent::Note(ref mut note) = event.event {
+                        if cond {
+                            *note += next.real;
                         }
-                        *event
-                    })
-                    .collect();
-            }
-            for event in events {
-                if indices.contains(&index) {
-                    current.push(*event);
-                } else if let ValidEvent::Tempo(_) = event.event {
+                    }
+                }
+                if !cond {
+                    next = keys.next();
+                }
+
+                if indices.contains(&index) || event.event.is_tempo() {
                     current.push(*event);
                 }
-            }
+            });
         }
         current.par_sort_by_key(|e| e.tick as usize);
 
@@ -305,6 +300,15 @@ enum ValidEvent {
     Note(i32),
     Tempo(u32),
     Other,
+}
+
+impl ValidEvent {
+    fn is_tempo(&self) -> bool {
+        match self {
+            ValidEvent::Tempo(_) => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
