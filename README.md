@@ -15,7 +15,7 @@ Currently supported mappings: **Genshin**, **VRChat-中文吧**
 
 # Getting Started
 
-Download [Release](https://github.com/ykong1337/lyred/releases/latest)
+Download [Release](https://github.com/yk0n9/lyred/releases/latest)
 
 # Android
-[LyredForAndroid](https://github.com/ykong1337/lyred-android)
+[LyredForAndroid](https://github.com/yk0n9/lyred-android)
