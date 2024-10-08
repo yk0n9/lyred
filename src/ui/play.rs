@@ -197,7 +197,7 @@ impl View for Play {
         ui.label("按下 + 键加速");
         ui.horizontal(|ui| {
             ui.label("按下");
-            egui::ComboBox::from_id_source(0)
+            egui::ComboBox::from_id_salt(0)
                 .selected_text(vk_display(self.function_key.play))
                 .show_ui(ui, |ui| {
                     KEY_CODE
@@ -215,7 +215,7 @@ impl View for Play {
         });
         ui.horizontal(|ui| {
             ui.label("按下");
-            egui::ComboBox::from_id_source(1)
+            egui::ComboBox::from_id_salt(1)
                 .selected_text(vk_display(self.function_key.pause))
                 .show_ui(ui, |ui| {
                     KEY_CODE
@@ -233,7 +233,7 @@ impl View for Play {
         });
         ui.horizontal(|ui| {
             ui.label("按下");
-            egui::ComboBox::from_id_source(2)
+            egui::ComboBox::from_id_salt(2)
                 .selected_text(vk_display(self.function_key.stop))
                 .show_ui(ui, |ui| {
                     KEY_CODE
@@ -276,7 +276,7 @@ impl View for Play {
         self.state = match STATE.load() {
             State::Playing => "播放中...",
             State::Pause => "已暂停",
-            _ => "已停止",
+            State::Stop => "已停止",
         };
     }
 }

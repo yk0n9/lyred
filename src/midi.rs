@@ -22,6 +22,13 @@ pub enum State {
 pub static STATE: AtomicCell<State> = AtomicCell::new(State::Stop);
 pub static SPEED: AtomicCell<f32> = AtomicCell::new(1.0);
 
+pub fn is_playing() -> bool {
+    match STATE.load() {
+        State::Stop => false,
+        _ => true,
+    }
+}
+
 const DEFAULT_TEMPO_MPQ: u32 = 500000;
 const MAP: &[i32] = &[
     24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64,

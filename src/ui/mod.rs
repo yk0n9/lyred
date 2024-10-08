@@ -1,6 +1,7 @@
 use eframe::egui::{Context, Separator, Ui};
 use eframe::{egui, App, Frame};
 
+use crate::midi::is_playing;
 use crate::ui::play::Play;
 use crate::COUNT;
 
@@ -86,7 +87,7 @@ impl App for Play {
                         });
                 }
             });
-        if self.notify_merge {
+        if self.notify_merge && !is_playing() {
             self.midi
                 .merge_tracks(&self.midi.current_range(), self.offset);
             self.notify_merge = false;

@@ -2,11 +2,14 @@ use std::fs;
 
 use rfd::MessageButtons;
 
-use crate::midi::{Event, Midi};
+use crate::midi::{is_playing, Event, Midi};
 use crate::POOL;
 
 impl Midi {
     pub fn convert_from_midi(self, name: String) {
+        if is_playing() {
+            return;
+        }
         POOL.spawn(move || {
             let mut res = String::new();
             let mut cache = String::new();
