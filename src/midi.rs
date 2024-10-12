@@ -271,7 +271,7 @@ impl Midi {
     /// 2. The time in microseconds this event was in track
     #[inline]
     fn tick2micros(tick: u32, tempo_mpq: u32, fps: f32) -> f32 {
-        (tick * tempo_mpq) as f32 / fps
+        tick as f32 * tempo_mpq as f32 / fps
     }
 
     /// 1. MPQ-Tempo to BPM-Tempo

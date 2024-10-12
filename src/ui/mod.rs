@@ -1,8 +1,10 @@
 use eframe::egui::{Context, Separator, Ui};
 use eframe::{egui, App, Frame};
 
+use crate::maps::MAP;
 use crate::midi::is_playing;
 use crate::ui::play::Play;
+use crate::util::{vk_display, KEY_CODE};
 use crate::COUNT;
 
 pub mod play;
@@ -17,6 +19,7 @@ impl App for Play {
         egui::CentralPanel::default().show(ctx, |ui| self.ui(ui));
         let tracks_enable = self.tracks_enable;
         egui::Window::new("音轨")
+            .scroll([true, true])
             .open(&mut self.tracks_enable)
             .show(ctx, |ui| {
                 if tracks_enable {
@@ -36,6 +39,7 @@ impl App for Play {
             });
         let pitch_enable = self.pitch_enable;
         egui::Window::new("音调")
+            .scroll([true, true])
             .open(&mut self.pitch_enable)
             .show(ctx, |ui| {
                 if pitch_enable {
@@ -92,11 +96,39 @@ impl App for Play {
                 .merge_tracks(&self.midi.current_range(), self.offset);
             self.notify_merge = false;
         }
+        egui::Window::new("按键映射")
+            .scroll([true, true])
+            .open(&mut self.map_enable)
+            .show(ctx, |ui| unsafe {
+                for (i, level) in ['+', ' ', '-'].into_iter().enumerate() {
+                    ui.separator();
+                    for key in 0..7 {
+                        let id = i * 7 + key;
+                        egui::ComboBox::from_label(format!("{}{}", level, key + 1))
+                            .selected_text(format!("{}", vk_display(MAP[id])))
+                            .show_ui(ui, |ui| {
+                                KEY_CODE
+                                    .iter()
+                                    .filter(|k| {
+                                        self.config.function_key.pause.ne(*k)
+                                            && self.config.function_key.play.ne(*k)
+                                            && self.config.function_key.stop.ne(*k)
+                                    })
+                                    .for_each(|key| {
+                                        ui.selectable_value(&mut MAP[id], *key, vk_display(*key));
+                                    });
+                            });
+                    }
+                }
+            });
     }
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
         drop(COUNT.take());
-        ron::to_string(&self.function_key)
+        unsafe {
+            self.config.map = MAP;
+        }
+        ron::to_string(&self.config)
             .inspect(|config| {
                 std::fs::write("config.ron", config).ok();
             })

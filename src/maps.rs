@@ -4,6 +4,10 @@ use windows::Win32::UI::Input::KeyboardAndMouse::*;
 
 use crate::ui::play::Mode;
 
+pub static mut MAP: [u16; 21] = [
+    81, 87, 69, 82, 84, 89, 85, 65, 83, 68, 70, 71, 72, 74, 90, 88, 67, 86, 66, 78, 77,
+];
+
 #[inline]
 pub fn is_pressed(vk: u16) -> bool {
     let status = unsafe { GetAsyncKeyState(vk as i32) as u32 };
@@ -20,51 +24,53 @@ pub fn get_map(mode: Mode) -> impl Fn(i32) {
 
 #[inline(always)]
 pub fn gen_shin(key: i32) {
-    match key {
-        24 => click(VK_Z),
-        26 => click(VK_X),
-        28 => click(VK_C),
-        29 => click(VK_V),
-        31 => click(VK_B),
-        33 => click(VK_N),
-        35 => click(VK_M),
-        36 => click(VK_Z),
-        38 => click(VK_X),
-        40 => click(VK_C),
-        41 => click(VK_V),
-        43 => click(VK_B),
-        45 => click(VK_N),
-        47 => click(VK_M),
-        48 => click(VK_Z),
-        50 => click(VK_X),
-        52 => click(VK_C),
-        53 => click(VK_V),
-        55 => click(VK_B),
-        57 => click(VK_N),
-        59 => click(VK_M),
-        60 => click(VK_A),
-        62 => click(VK_S),
-        64 => click(VK_D),
-        65 => click(VK_F),
-        67 => click(VK_G),
-        69 => click(VK_H),
-        71 => click(VK_J),
-        72 => click(VK_Q),
-        74 => click(VK_W),
-        76 => click(VK_E),
-        77 => click(VK_R),
-        79 => click(VK_T),
-        81 => click(VK_Y),
-        83 => click(VK_U),
-        84 => click(VK_Q),
-        86 => click(VK_W),
-        88 => click(VK_E),
-        89 => click(VK_R),
-        91 => click(VK_T),
-        93 => click(VK_Y),
-        95 => click(VK_U),
-        _ => {}
-    };
+    unsafe {
+        match key {
+            24 => click(VIRTUAL_KEY(MAP[14])),
+            26 => click(VIRTUAL_KEY(MAP[15])),
+            28 => click(VIRTUAL_KEY(MAP[16])),
+            29 => click(VIRTUAL_KEY(MAP[17])),
+            31 => click(VIRTUAL_KEY(MAP[18])),
+            33 => click(VIRTUAL_KEY(MAP[19])),
+            35 => click(VIRTUAL_KEY(MAP[20])),
+            36 => click(VIRTUAL_KEY(MAP[14])),
+            38 => click(VIRTUAL_KEY(MAP[15])),
+            40 => click(VIRTUAL_KEY(MAP[16])),
+            41 => click(VIRTUAL_KEY(MAP[17])),
+            43 => click(VIRTUAL_KEY(MAP[18])),
+            45 => click(VIRTUAL_KEY(MAP[19])),
+            47 => click(VIRTUAL_KEY(MAP[20])),
+            48 => click(VIRTUAL_KEY(MAP[14])),
+            50 => click(VIRTUAL_KEY(MAP[15])),
+            52 => click(VIRTUAL_KEY(MAP[16])),
+            53 => click(VIRTUAL_KEY(MAP[17])),
+            55 => click(VIRTUAL_KEY(MAP[18])),
+            57 => click(VIRTUAL_KEY(MAP[19])),
+            59 => click(VIRTUAL_KEY(MAP[20])),
+            60 => click(VIRTUAL_KEY(MAP[7])),
+            62 => click(VIRTUAL_KEY(MAP[8])),
+            64 => click(VIRTUAL_KEY(MAP[9])),
+            65 => click(VIRTUAL_KEY(MAP[10])),
+            67 => click(VIRTUAL_KEY(MAP[11])),
+            69 => click(VIRTUAL_KEY(MAP[12])),
+            71 => click(VIRTUAL_KEY(MAP[13])),
+            72 => click(VIRTUAL_KEY(MAP[0])),
+            74 => click(VIRTUAL_KEY(MAP[1])),
+            76 => click(VIRTUAL_KEY(MAP[2])),
+            77 => click(VIRTUAL_KEY(MAP[3])),
+            79 => click(VIRTUAL_KEY(MAP[4])),
+            81 => click(VIRTUAL_KEY(MAP[5])),
+            83 => click(VIRTUAL_KEY(MAP[6])),
+            84 => click(VIRTUAL_KEY(MAP[0])),
+            86 => click(VIRTUAL_KEY(MAP[1])),
+            88 => click(VIRTUAL_KEY(MAP[2])),
+            89 => click(VIRTUAL_KEY(MAP[3])),
+            91 => click(VIRTUAL_KEY(MAP[4])),
+            93 => click(VIRTUAL_KEY(MAP[5])),
+            95 => click(VIRTUAL_KEY(MAP[6])),
+            _ => {}
+        };
+    }
 }
 
 #[inline(always)]

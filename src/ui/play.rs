@@ -7,7 +7,7 @@ use eframe::{egui, CreationContext};
 use serde::{Deserialize, Serialize};
 
 use crate::font::load_fonts;
-use crate::maps::is_pressed;
+use crate::maps::{is_pressed, MAP};
 use crate::midi::{Midi, State, SPEED, STATE};
 use crate::ui::View;
 use crate::util::{vk_display, KEY_CODE};
@@ -21,9 +21,10 @@ pub struct Play {
     pub state: &'static str,
     pub tracks_enable: bool,
     pub pitch_enable: bool,
+    pub map_enable: bool,
     pub offset: i32,
     pub notify_merge: bool,
-    pub function_key: FunctionKey,
+    pub config: Config,
     pub control_key: ControlKey,
     pub progress: usize,
 }
@@ -73,20 +74,32 @@ impl Play {
         .into();
         cc.egui_ctx.set_style(style);
 
-        Self {
-            midi: Midi::new(),
-            speed: 1.0,
-            mode: Mode::GenShin,
-            state: "已停止",
-            tracks_enable: false,
-            pitch_enable: false,
-            offset: 0,
-            notify_merge: false,
-            function_key: FunctionKey::default(),
-            control_key: ControlKey::default(),
-            progress: 0,
+        unsafe {
+            Self {
+                midi: Midi::new(),
+                speed: 1.0,
+                mode: Mode::GenShin,
+                state: "已停止",
+                tracks_enable: false,
+                pitch_enable: false,
+                map_enable: false,
+                offset: 0,
+                notify_merge: false,
+                config: Config {
+                    function_key: FunctionKey::default(),
+                    map: MAP,
+                },
+                control_key: ControlKey::default(),
+                progress: 0,
+            }
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+pub struct Config {
+    pub function_key: FunctionKey,
+    pub map: [u16; 21],
 }
 
 impl View for Play {
@@ -167,6 +180,7 @@ impl View for Play {
         }
         ui.toggle_value(&mut self.tracks_enable, "音轨列表");
         ui.toggle_value(&mut self.pitch_enable, "音调列表");
+        ui.toggle_value(&mut self.map_enable, "按键映射");
         ui.separator();
         ui.label(self.state);
         if STATE.load() != State::Stop {
@@ -197,15 +211,19 @@ impl View for Play {
         ui.label("按下 + 键加速");
         ui.horizontal(|ui| {
             ui.label("按下");
-            egui::ComboBox::from_id_salt(0)
-                .selected_text(vk_display(self.function_key.play))
+            egui::ComboBox::from_id_salt("Play")
+                .selected_text(vk_display(self.config.function_key.play))
                 .show_ui(ui, |ui| {
                     KEY_CODE
                         .iter()
-                        .filter(|k| **k != self.function_key.pause && **k != self.function_key.stop)
+                        .filter(|k| unsafe {
+                            self.config.function_key.pause.ne(*k)
+                                && self.config.function_key.stop.ne(*k)
+                                && !MAP.contains(*k)
+                        })
                         .for_each(|key| {
                             ui.selectable_value(
-                                &mut self.function_key.play,
+                                &mut self.config.function_key.play,
                                 *key,
                                 vk_display(*key),
                             );
@@ -215,15 +233,19 @@ impl View for Play {
         });
         ui.horizontal(|ui| {
             ui.label("按下");
-            egui::ComboBox::from_id_salt(1)
-                .selected_text(vk_display(self.function_key.pause))
+            egui::ComboBox::from_id_salt("Pause")
+                .selected_text(vk_display(self.config.function_key.pause))
                 .show_ui(ui, |ui| {
                     KEY_CODE
                         .iter()
-                        .filter(|k| **k != self.function_key.play && **k != self.function_key.stop)
+                        .filter(|k| unsafe {
+                            self.config.function_key.play.ne(*k)
+                                && self.config.function_key.stop.ne(*k)
+                                && !MAP.contains(*k)
+                        })
                         .for_each(|key| {
                             ui.selectable_value(
-                                &mut self.function_key.pause,
+                                &mut self.config.function_key.pause,
                                 *key,
                                 vk_display(*key),
                             );
@@ -233,15 +255,19 @@ impl View for Play {
         });
         ui.horizontal(|ui| {
             ui.label("按下");
-            egui::ComboBox::from_id_salt(2)
-                .selected_text(vk_display(self.function_key.stop))
+            egui::ComboBox::from_id_salt("Stop")
+                .selected_text(vk_display(self.config.function_key.stop))
                 .show_ui(ui, |ui| {
                     KEY_CODE
                         .iter()
-                        .filter(|k| **k != self.function_key.play && **k != self.function_key.pause)
+                        .filter(|k| unsafe {
+                            self.config.function_key.play.ne(*k)
+                                && self.config.function_key.pause.ne(*k)
+                                && !MAP.contains(*k)
+                        })
                         .for_each(|key| {
                             ui.selectable_value(
-                                &mut self.function_key.stop,
+                                &mut self.config.function_key.stop,
                                 *key,
                                 vk_display(*key),
                             );
@@ -252,7 +278,7 @@ impl View for Play {
         ui.label("");
         ui.label("注意: 每±12个偏移量为一个八度");
 
-        if is_pressed(self.function_key.play) {
+        if is_pressed(self.config.function_key.play) {
             match STATE.load() {
                 State::Stop => {
                     if LOCAL.load(Ordering::Relaxed) == !0 {
@@ -264,10 +290,10 @@ impl View for Play {
                 _ => {}
             }
         }
-        if is_pressed(self.function_key.stop) {
+        if is_pressed(self.config.function_key.stop) {
             STATE.store(State::Stop);
         }
-        if is_pressed(self.function_key.pause) {
+        if is_pressed(self.config.function_key.pause) {
             if let State::Playing = STATE.load() {
                 STATE.store(State::Pause);
             }

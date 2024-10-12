@@ -5,6 +5,7 @@ use std::sync::Arc;
 use eframe::egui::{IconData, Vec2, ViewportBuilder};
 use eframe::NativeOptions;
 
+use lyred::maps::MAP;
 use lyred::ui::play::Play;
 
 fn main() {
@@ -35,7 +36,10 @@ fn run() {
         Box::new(|cc| {
             let mut play = Play::new(cc);
             if let Ok(file) = std::fs::read_to_string("config.ron") {
-                play.function_key = ron::from_str(&file).unwrap_or_default();
+                play.config = ron::from_str(&file).unwrap_or_default();
+                unsafe {
+                    MAP = play.config.map;
+                }
             }
             Ok(Box::new(play))
         }),
