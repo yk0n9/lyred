@@ -11,9 +11,9 @@ midly = "0.5"
 rayon = "1"
 image = "0.25"
 eframe = "0.29"
-rfd = "0.14"
+rfd = "0.15"
 parking_lot = "0.12"
-font-kit = "0.13"
+font-kit = "0.14"
 windows = { version = "0.58", features = ["Win32_UI_Input_KeyboardAndMouse"] }
 ron = "0.8"
 serde = { version = "1", features = ["derive"] }
