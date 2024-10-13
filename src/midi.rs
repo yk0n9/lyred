@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::thread::sleep;
 use std::time::{Duration, Instant};
@@ -7,10 +6,11 @@ use std::time::{Duration, Instant};
 use crossbeam::atomic::AtomicCell;
 use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 use parking_lot::RwLock;
+use rand::Rng;
 use rayon::slice::ParallelSliceMut;
 
 use crate::maps::get_map;
-use crate::ui::play::Mode;
+use crate::ui::play::{Mode, PlayMode};
 use crate::{COUNT, LOCAL, POOL, TIME_SHIFT};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -20,6 +20,7 @@ pub enum State {
     Pause,
 }
 
+pub static PLAYING: AtomicCell<bool> = AtomicCell::new(false);
 pub static STATE: AtomicCell<State> = AtomicCell::new(State::Stop);
 pub static SPEED: AtomicCell<f32> = AtomicCell::new(1.0);
 pub static CURRENT_MIDI: AtomicCell<usize> = AtomicCell::new(0);
@@ -84,13 +85,13 @@ impl Midi {
         let mut input_time = 0.0;
         let mut i = 0;
         while i < events.len() {
-            if TIME_SHIFT.load(Ordering::Relaxed) {
-                TIME_SHIFT.store(false, Ordering::Relaxed);
-                i = LOCAL.load(Ordering::Relaxed);
+            if TIME_SHIFT.load() {
+                TIME_SHIFT.store(false);
+                i = LOCAL.load();
                 input_time = events[i].delay;
                 start_time = Instant::now();
             } else {
-                LOCAL.store(i, Ordering::Relaxed);
+                LOCAL.store(i);
             }
             let e = events[i];
             i += 1;
@@ -107,7 +108,7 @@ impl Midi {
                     start_time = Instant::now();
                     i -= 1;
                 }
-                _ => break,
+                State::Stop => break,
             }
         }
     }
@@ -257,26 +258,68 @@ impl Midi {
 
     pub fn playback(&self, offset: i32, mode: Mode) {
         let send = get_map(mode);
+        PLAYING.store(true);
         self.play(|key| send(key + offset));
-        STATE.store(State::Stop);
-        LOCAL.store(!0, Ordering::Relaxed);
+        PLAYING.store(false);
+        LOCAL.store(0);
     }
 
     pub fn playback_one(self, offset: i32, mode: Mode) {
         POOL.spawn(move || {
             self.playback(offset, mode);
+            STATE.store(State::Stop);
         });
     }
 
-    pub fn playback_list(self, dir_path: impl AsRef<Path>, mode: Mode) {
+    pub fn playback_list(
+        self,
+        mut index: usize,
+        dir_path: impl AsRef<Path>,
+        mode: Mode,
+        random: bool,
+    ) {
         let path = dir_path.as_ref().to_path_buf();
-        POOL.spawn(move || {
-            for (index, file) in self.midis.read().iter().enumerate() {
+        let max = self.midis.read().len();
+        POOL.spawn(move || loop {
+            if index < max {
+                let midis = self.midis.read();
+                let file = midis[index].as_str();
                 CURRENT_MIDI.store(index);
                 self.read_midi(path.join(file));
                 self.playback(0, mode);
+                if let State::Stop = STATE.load() {
+                    break;
+                }
+                if random {
+                    let mut rng = rand::thread_rng();
+                    index = rng.gen_range(0..max);
+                } else {
+                    index += 1;
+                }
+            } else {
+                index = 0;
             }
         });
+    }
+
+    pub fn playback_by(self, path: impl AsRef<Path>, offset: i32, play_mode: PlayMode, mode: Mode) {
+        match play_mode {
+            PlayMode::Once => {
+                STATE.store(State::Playing);
+                self.playback_one(offset, mode);
+            }
+            PlayMode::Loop | PlayMode::Random => {
+                if !self.midis.read().is_empty() {
+                    STATE.store(State::Playing);
+                    self.playback_list(
+                        CURRENT_MIDI.load(),
+                        path,
+                        mode,
+                        play_mode.eq(&PlayMode::Random),
+                    );
+                }
+            }
+        }
     }
 
     pub fn detect(&self, offset: i32) -> f32 {

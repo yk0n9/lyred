@@ -1,5 +1,4 @@
 use std::ops::Deref;
-use std::sync::atomic::Ordering;
 use std::sync::Arc;
 
 use eframe::egui::FontFamily::Proportional;
@@ -11,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::font::load_fonts;
 use crate::maps::{is_pressed, MAP};
-use crate::midi::{Midi, State, SPEED, STATE};
+use crate::midi::{Midi, State, PLAYING, SPEED, STATE};
 use crate::ui::View;
 use crate::util::{vk_display, KEY_CODE};
 use crate::{COUNT, LOCAL, POOL, TIME_SHIFT};
@@ -21,6 +20,7 @@ pub struct Play {
     pub midi: Midi,
     pub speed: f32,
     pub mode: Mode,
+    pub play_mode: PlayMode,
     pub state: &'static str,
     pub tracks_enable: bool,
     pub pitch_enable: bool,
@@ -62,6 +62,13 @@ pub enum Mode {
     VRChat,
 }
 
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum PlayMode {
+    Once,
+    Loop,
+    Random,
+}
+
 impl Play {
     pub fn new(cc: &CreationContext) -> Self {
         load_fonts(&cc.egui_ctx);
@@ -82,6 +89,7 @@ impl Play {
             midi: Midi::new(),
             speed: 1.0,
             mode: Mode::GenShin,
+            play_mode: PlayMode::Once,
             state: "已停止",
             tracks_enable: false,
             pitch_enable: false,
@@ -176,10 +184,16 @@ impl View for Play {
             ui.label(format!("当前目录: {}", path.as_str()));
         }
         ui.separator();
-        ui.label("选择模式");
         ui.horizontal(|ui| {
+            ui.label("选择模式:");
             ui.radio_value(&mut self.mode, Mode::GenShin, "GenShin");
             ui.radio_value(&mut self.mode, Mode::VRChat, "VRChat-中文吧");
+        });
+        ui.horizontal(|ui| {
+            ui.label("播放模式:");
+            ui.radio_value(&mut self.play_mode, PlayMode::Once, "单次");
+            ui.radio_value(&mut self.play_mode, PlayMode::Loop, "列表循环");
+            ui.radio_value(&mut self.play_mode, PlayMode::Random, "列表随机");
         });
         ui.separator();
         ui.horizontal(|ui| {
@@ -240,26 +254,28 @@ impl View for Play {
 
         ui.label(self.state);
         if STATE.load() != State::Stop {
-            self.progress = LOCAL.load(Ordering::Relaxed);
+            self.progress = LOCAL.load();
             let count = unsafe { &*COUNT.as_ptr() };
             let current = self.progress;
             let len = count.len().saturating_sub(1);
-            if ui
-                .add(
-                    Slider::new(&mut self.progress, 0..=len)
-                        .show_value(false)
-                        .text(format!(
-                            "{:02}:{:02}/{:02}:{:02}",
-                            count[current] / 60000000,
-                            count[current] / 1000000 % 60,
-                            count[len] / 60000000,
-                            count[len] / 1000000 % 60
-                        )),
-                )
-                .drag_stopped()
-            {
-                TIME_SHIFT.store(true, Ordering::Relaxed);
-                LOCAL.store(self.progress, Ordering::Relaxed);
+            if len > 0 {
+                if ui
+                    .add(
+                        Slider::new(&mut self.progress, 0..=len)
+                            .show_value(false)
+                            .text(format!(
+                                "{:02}:{:02}/{:02}:{:02}",
+                                count[current] / 60000000,
+                                count[current] / 1000000 % 60,
+                                count[len] / 60000000,
+                                count[len] / 1000000 % 60
+                            )),
+                    )
+                    .drag_stopped()
+                {
+                    TIME_SHIFT.store(true);
+                    LOCAL.store(self.progress);
+                }
             }
         }
         ui.separator();
@@ -337,9 +353,14 @@ impl View for Play {
         if is_pressed(self.config.function_key.play) {
             match STATE.load() {
                 State::Stop => {
-                    if LOCAL.load(Ordering::Relaxed) == !0 {
-                        STATE.store(State::Playing);
-                        self.midi.clone().playback_one(self.offset, self.mode);
+                    if !PLAYING.load() {
+                        let midi = self.midi.clone();
+                        midi.playback_by(
+                            self.config.midi_dir.0.read().as_str(),
+                            self.offset,
+                            self.play_mode,
+                            self.mode,
+                        );
                     }
                 }
                 State::Pause => STATE.store(State::Playing),

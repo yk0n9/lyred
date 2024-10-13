@@ -4,7 +4,7 @@ use eframe::egui::{Context, SelectableLabel, Separator, Ui};
 use eframe::{egui, App, Frame};
 
 use crate::maps::MAP;
-use crate::midi::{is_playing, State, CURRENT_MIDI, STATE};
+use crate::midi::{is_playing, CURRENT_MIDI};
 use crate::ui::play::Play;
 use crate::util::{vk_display, KEY_CODE};
 use crate::COUNT;
@@ -141,8 +141,12 @@ impl App for Play {
                                 index,
                                 Path::new(self.config.midi_dir.0.read().as_str()).join(midi_file),
                             );
-                            STATE.store(State::Playing);
-                            midi.playback_one(self.offset, self.mode);
+                            midi.playback_by(
+                                self.config.midi_dir.0.read().as_str(),
+                                self.offset,
+                                self.play_mode,
+                                self.mode,
+                            );
                         }
                         let file = ui.add(SelectableLabel::new(cond, midi_file));
                         if file.clicked() {
