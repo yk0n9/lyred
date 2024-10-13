@@ -26,10 +26,7 @@ pub static SPEED: AtomicCell<f32> = AtomicCell::new(1.0);
 pub static CURRENT_MIDI: AtomicCell<usize> = AtomicCell::new(0);
 
 pub fn is_playing() -> bool {
-    match STATE.load() {
-        State::Stop => false,
-        _ => true,
-    }
+    !matches!(STATE.load(), State::Stop)
 }
 
 const DEFAULT_TEMPO_MPQ: u32 = 500000;
@@ -138,7 +135,7 @@ impl Midi {
         );
         self.fps.store(match smf.header.timing {
             Timing::Metrical(fps) => fps.as_int() as f32,
-            Timing::Timecode(fps, timing) => (timing & 0xFF) as f32 * fps.as_f32(),
+            Timing::Timecode(fps, timing) => timing as f32 * fps.as_f32(),
         });
         let track_len = smf.tracks.len();
 
@@ -410,10 +407,7 @@ enum ValidEvent {
 
 impl ValidEvent {
     fn is_tempo(&self) -> bool {
-        match self {
-            ValidEvent::Tempo(_) => true,
-            _ => false,
-        }
+        matches!(self, ValidEvent::Tempo(_))
     }
 }
 

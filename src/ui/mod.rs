@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::path::Path;
 
 use eframe::egui::{Context, SelectableLabel, Separator, Ui};
@@ -65,12 +66,10 @@ impl App for Play {
                                             ui.vertical(|ui| {
                                                 ui.label(format!(
                                                     "{}{}",
-                                                    if key.key > 0 {
-                                                        "#"
-                                                    } else if key.key < 0 {
-                                                        "b"
-                                                    } else {
-                                                        ""
+                                                    match key.key.cmp(&0) {
+                                                        Ordering::Less => "b",
+                                                        Ordering::Greater => "#",
+                                                        Ordering::Equal => "",
                                                     },
                                                     key.key.abs()
                                                 ));
@@ -107,7 +106,7 @@ impl App for Play {
                     for key in 0..7 {
                         let id = i * 7 + key;
                         egui::ComboBox::from_label(format!("{}{}", level, key + 1))
-                            .selected_text(format!("{}", vk_display(MAP[id])))
+                            .selected_text(vk_display(MAP[id]))
                             .show_ui(ui, |ui| {
                                 KEY_CODE
                                     .iter()

@@ -178,7 +178,7 @@ impl View for Play {
             }
         });
         if let Some(name) = self.midi.name.read().as_ref() {
-            ui.label(&format!("当前文件: {}", name));
+            ui.label(format!("当前文件: {}", name));
         }
         let path = self.config.midi_dir.0.read();
         if !path.is_empty() {
@@ -260,8 +260,8 @@ impl View for Play {
             let count = unsafe { &*COUNT.as_ptr() };
             let current = self.progress;
             let len = count.len().saturating_sub(1);
-            if len > 0 {
-                if ui
+            if len > 0
+                && ui
                     .add(
                         Slider::new(&mut self.progress, 0..=len)
                             .show_value(false)
@@ -274,10 +274,9 @@ impl View for Play {
                             )),
                     )
                     .drag_stopped()
-                {
-                    TIME_SHIFT.store(true);
-                    LOCAL.store(self.progress);
-                }
+            {
+                TIME_SHIFT.store(true);
+                LOCAL.store(self.progress);
             }
         }
         ui.separator();
