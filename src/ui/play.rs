@@ -1,9 +1,12 @@
+use std::ops::Deref;
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
 
 use eframe::egui::FontFamily::Proportional;
 use eframe::egui::TextStyle::*;
 use eframe::egui::{FontId, Slider, Ui};
 use eframe::{egui, CreationContext};
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 
 use crate::font::load_fonts;
@@ -11,7 +14,7 @@ use crate::maps::{is_pressed, MAP};
 use crate::midi::{Midi, State, SPEED, STATE};
 use crate::ui::View;
 use crate::util::{vk_display, KEY_CODE};
-use crate::{COUNT, LOCAL, TIME_SHIFT};
+use crate::{COUNT, LOCAL, POOL, TIME_SHIFT};
 
 #[derive(Debug, Clone)]
 pub struct Play {
@@ -22,6 +25,7 @@ pub struct Play {
     pub tracks_enable: bool,
     pub pitch_enable: bool,
     pub map_enable: bool,
+    pub dir_enable: bool,
     pub offset: i32,
     pub notify_merge: bool,
     pub config: Config,
@@ -74,32 +78,72 @@ impl Play {
         .into();
         cc.egui_ctx.set_style(style);
 
-        unsafe {
-            Self {
-                midi: Midi::new(),
-                speed: 1.0,
-                mode: Mode::GenShin,
-                state: "已停止",
-                tracks_enable: false,
-                pitch_enable: false,
-                map_enable: false,
-                offset: 0,
-                notify_merge: false,
-                config: Config {
-                    function_key: FunctionKey::default(),
-                    map: MAP,
-                },
-                control_key: ControlKey::default(),
-                progress: 0,
-            }
+        Self {
+            midi: Midi::new(),
+            speed: 1.0,
+            mode: Mode::GenShin,
+            state: "已停止",
+            tracks_enable: false,
+            pitch_enable: false,
+            map_enable: false,
+            dir_enable: false,
+            offset: 0,
+            notify_merge: false,
+            config: Config::default(),
+            control_key: ControlKey::default(),
+            progress: 0,
         }
+    }
+
+    fn select_dir(&self) {
+        let dir = self.config.midi_dir.0.clone();
+        let midi = self.midi.clone();
+        POOL.spawn(move || {
+            if let Some(path) = rfd::FileDialog::new().pick_folder() {
+                *dir.write() = path.to_string_lossy().to_string();
+                midi.get_midis_path(path);
+            }
+        });
     }
 }
 
-#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
+pub struct MidiDir(pub Arc<RwLock<String>>);
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
+    pub midi_dir: MidiDir,
     pub function_key: FunctionKey,
     pub map: [u16; 21],
+}
+
+impl Serialize for MidiDir {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.0.read().deref())
+    }
+}
+
+impl<'de> Deserialize<'de> for MidiDir {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let path = String::deserialize(deserializer)?;
+        Ok(MidiDir(Arc::new(RwLock::new(path))))
+    }
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            midi_dir: MidiDir(Arc::new(RwLock::new(String::new()))),
+            function_key: Default::default(),
+            map: unsafe { MAP },
+        }
+    }
 }
 
 impl View for Play {
@@ -107,12 +151,17 @@ impl View for Play {
         ui.vertical_centered(|ui| ui.heading("Lyred"));
         ui.separator();
         ui.horizontal(|ui| {
-            ui.label("选择MIDI文件");
-            if ui.button("打开").clicked() {
+            if ui.button("选择MIDI文件").clicked() {
                 STATE.store(State::Stop);
-                self.midi.clone().init();
                 self.offset = 0;
+                self.midi.clone().init();
             }
+            if ui.button("选择MIDI目录").clicked() {
+                STATE.store(State::Stop);
+                self.offset = 0;
+                self.select_dir();
+            }
+            ui.toggle_value(&mut self.dir_enable, "MIDI列表");
             if ui.button("从MIDI转换").clicked() {
                 if let Some(name) = self.midi.name.read().as_ref() {
                     self.midi.clone().convert_from_midi(name.to_string());
@@ -121,6 +170,10 @@ impl View for Play {
         });
         if let Some(name) = self.midi.name.read().as_ref() {
             ui.label(&format!("当前文件: {}", name));
+        }
+        let path = self.config.midi_dir.0.read();
+        if !path.is_empty() {
+            ui.label(format!("当前目录: {}", path.as_str()));
         }
         ui.separator();
         ui.label("选择模式");
@@ -178,10 +231,13 @@ impl View for Play {
             self.offset -= 1;
             self.midi.hit_rate.store(self.midi.detect(self.offset));
         }
-        ui.toggle_value(&mut self.tracks_enable, "音轨列表");
-        ui.toggle_value(&mut self.pitch_enable, "音调列表");
-        ui.toggle_value(&mut self.map_enable, "按键映射");
+        ui.horizontal(|ui| {
+            ui.toggle_value(&mut self.tracks_enable, "音轨列表");
+            ui.toggle_value(&mut self.pitch_enable, "音调列表");
+            ui.toggle_value(&mut self.map_enable, "按键映射");
+        });
         ui.separator();
+
         ui.label(self.state);
         if STATE.load() != State::Stop {
             self.progress = LOCAL.load(Ordering::Relaxed);
@@ -283,7 +339,7 @@ impl View for Play {
                 State::Stop => {
                     if LOCAL.load(Ordering::Relaxed) == !0 {
                         STATE.store(State::Playing);
-                        self.midi.clone().playback(self.offset, self.mode);
+                        self.midi.clone().playback_one(self.offset, self.mode);
                     }
                 }
                 State::Pause => STATE.store(State::Playing),

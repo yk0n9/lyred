@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::path::Path;
 use std::sync::Arc;
 
 use eframe::egui::{IconData, Vec2, ViewportBuilder};
@@ -22,7 +23,7 @@ fn run() {
             height: image.height(),
             rgba: image.into_rgba8().into_raw(),
         })),
-        inner_size: Some(Vec2::new(400.0, 700.0)),
+        inner_size: Some(Vec2::new(400.0, 800.0)),
         maximize_button: Some(false),
         ..Default::default()
     };
@@ -37,6 +38,10 @@ fn run() {
             let mut play = Play::new(cc);
             if let Ok(file) = std::fs::read_to_string("config.ron") {
                 play.config = ron::from_str(&file).unwrap_or_default();
+                let dir = play.config.midi_dir.0.read();
+                if !dir.is_empty() {
+                    play.midi.get_midis_path(Path::new(dir.as_str()));
+                }
                 unsafe {
                     MAP = play.config.map;
                 }

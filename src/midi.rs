@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::thread::sleep;
@@ -21,6 +22,7 @@ pub enum State {
 
 pub static STATE: AtomicCell<State> = AtomicCell::new(State::Stop);
 pub static SPEED: AtomicCell<f32> = AtomicCell::new(1.0);
+pub static CURRENT_MIDI: AtomicCell<usize> = AtomicCell::new(0);
 
 pub fn is_playing() -> bool {
     match STATE.load() {
@@ -44,6 +46,7 @@ pub struct Midi {
     pub track_num: Arc<RwLock<Vec<(bool, usize, String)>>>,
     pub track_keys: Arc<RwLock<Vec<Vec<TrackKey>>>>,
     pub hit_rate: Arc<AtomicCell<f32>>,
+    pub midis: Arc<RwLock<Vec<String>>>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -71,6 +74,7 @@ impl Midi {
             track_num: Arc::new(RwLock::new(vec![])),
             track_keys: Arc::new(RwLock::new(vec![])),
             hit_rate: Arc::new(Default::default()),
+            midis: Arc::new(RwLock::new(vec![])),
         }
     }
 
@@ -114,79 +118,84 @@ impl Midi {
                 .add_filter("MIDI File", &["mid"])
                 .pick_file()
             {
-                let file = std::fs::read(path).unwrap_or_default();
-                let Ok(smf) = Smf::parse(&file) else {
-                    return;
-                };
-                self.name.write().replace(
-                    path.file_name()
-                        .unwrap_or_default()
-                        .to_string_lossy()
-                        .into_owned(),
-                );
-                self.fps.store(match smf.header.timing {
-                    Timing::Metrical(fps) => fps.as_int() as f32,
-                    Timing::Timecode(fps, timing) => (timing & 0xFF) as f32 * fps.as_f32(),
-                });
-                let track_len = smf.tracks.len();
-
-                let mut track_keys = Vec::with_capacity(track_len);
-                let mut track_num = Vec::with_capacity(track_len);
-                *self.tracks.write() = smf
-                    .tracks
-                    .into_iter()
-                    .enumerate()
-                    .map(|(index, track)| {
-                        let mut tick = 0;
-                        let mut track_name = String::from("Untitle");
-                        let mut keys = vec![];
-                        let events = track
-                            .into_iter()
-                            .map(|e| {
-                                tick += e.delta.as_int();
-                                let event = match e.kind {
-                                    TrackEventKind::Meta(MetaMessage::TrackName(name)) => {
-                                        track_name = String::from_utf8_lossy(name).to_string();
-                                        ValidEvent::Other
-                                    }
-                                    TrackEventKind::Meta(MetaMessage::Tempo(t)) => {
-                                        ValidEvent::Tempo(t.as_int())
-                                    }
-                                    TrackEventKind::Meta(MetaMessage::KeySignature(key, _)) => {
-                                        keys.push(TrackKey {
-                                            tick,
-                                            key: key as i32,
-                                            backup: key as i32,
-                                            real: 0,
-                                        });
-                                        ValidEvent::Other
-                                    }
-                                    TrackEventKind::Midi {
-                                        message: MidiMessage::NoteOn { key, vel },
-                                        ..
-                                    } => {
-                                        if vel > 0 {
-                                            ValidEvent::Note(key.as_int() as i32)
-                                        } else {
-                                            ValidEvent::Other
-                                        }
-                                    }
-                                    _ => ValidEvent::Other,
-                                };
-                                RawEvent { event, tick }
-                            })
-                            .collect::<Vec<_>>();
-                        track_keys.push(keys);
-                        track_num.push((true, index, track_name));
-                        events
-                    })
-                    .collect::<Vec<_>>();
-
-                *self.track_keys.write() = track_keys;
-                *self.track_num.write() = track_num;
-                self.merge_tracks(&(0..track_len).collect::<Vec<_>>(), 0);
+                self.read_midi(path);
             }
         });
+    }
+
+    pub fn read_midi(&self, path: impl AsRef<Path>) {
+        let path = path.as_ref();
+        let file = std::fs::read(path).unwrap_or_default();
+        let Ok(smf) = Smf::parse(&file) else {
+            return;
+        };
+        self.name.write().replace(
+            path.file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned(),
+        );
+        self.fps.store(match smf.header.timing {
+            Timing::Metrical(fps) => fps.as_int() as f32,
+            Timing::Timecode(fps, timing) => (timing & 0xFF) as f32 * fps.as_f32(),
+        });
+        let track_len = smf.tracks.len();
+
+        let mut track_keys = Vec::with_capacity(track_len);
+        let mut track_num = Vec::with_capacity(track_len);
+        *self.tracks.write() = smf
+            .tracks
+            .into_iter()
+            .enumerate()
+            .map(|(index, track)| {
+                let mut tick = 0;
+                let mut track_name = String::from("Untitle");
+                let mut keys = vec![];
+                let events = track
+                    .into_iter()
+                    .map(|e| {
+                        tick += e.delta.as_int();
+                        let event = match e.kind {
+                            TrackEventKind::Meta(MetaMessage::TrackName(name)) => {
+                                track_name = String::from_utf8_lossy(name).to_string();
+                                ValidEvent::Other
+                            }
+                            TrackEventKind::Meta(MetaMessage::Tempo(t)) => {
+                                ValidEvent::Tempo(t.as_int())
+                            }
+                            TrackEventKind::Meta(MetaMessage::KeySignature(key, _)) => {
+                                keys.push(TrackKey {
+                                    tick,
+                                    key: key as i32,
+                                    backup: key as i32,
+                                    real: 0,
+                                });
+                                ValidEvent::Other
+                            }
+                            TrackEventKind::Midi {
+                                message: MidiMessage::NoteOn { key, vel },
+                                ..
+                            } => {
+                                if vel > 0 {
+                                    ValidEvent::Note(key.as_int() as i32)
+                                } else {
+                                    ValidEvent::Other
+                                }
+                            }
+                            _ => ValidEvent::Other,
+                        };
+                        RawEvent { event, tick }
+                    })
+                    .collect::<Vec<_>>();
+                track_keys.push(keys);
+                track_num.push((true, index, track_name));
+                events
+            })
+            .collect::<Vec<_>>();
+
+        *self.track_keys.write() = track_keys;
+        *self.track_num.write() = track_num;
+        self.merge_tracks(&(0..track_len).collect::<Vec<_>>(), 0);
     }
 
     pub fn merge_tracks(&self, indices: &[usize], offset: i32) {
@@ -246,12 +255,27 @@ impl Midi {
         self.hit_rate.store(self.detect(offset));
     }
 
-    pub fn playback(self, offset: i32, mode: Mode) {
+    pub fn playback(&self, offset: i32, mode: Mode) {
+        let send = get_map(mode);
+        self.play(|key| send(key + offset));
+        STATE.store(State::Stop);
+        LOCAL.store(!0, Ordering::Relaxed);
+    }
+
+    pub fn playback_one(self, offset: i32, mode: Mode) {
         POOL.spawn(move || {
-            let send = get_map(mode);
-            self.play(|key| send(key + offset));
-            STATE.store(State::Stop);
-            LOCAL.store(!0, Ordering::Relaxed);
+            self.playback(offset, mode);
+        });
+    }
+
+    pub fn playback_list(self, dir_path: impl AsRef<Path>, mode: Mode) {
+        let path = dir_path.as_ref().to_path_buf();
+        POOL.spawn(move || {
+            for (index, file) in self.midis.read().iter().enumerate() {
+                CURRENT_MIDI.store(index);
+                self.read_midi(path.join(file));
+                self.playback(0, mode);
+            }
         });
     }
 
@@ -299,6 +323,33 @@ impl Midi {
                 },
             )
             .collect()
+    }
+
+    pub fn get_midis_path(&self, path: impl AsRef<Path>) {
+        let Ok(entry) = path.as_ref().read_dir() else {
+            return;
+        };
+        let midis = entry
+            .into_iter()
+            .filter_map(|entry| {
+                let Ok(entry) = entry else {
+                    return None;
+                };
+                if entry.path().extension().unwrap_or_default().eq("mid") {
+                    Some(entry.file_name().to_string_lossy().to_string())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+        CURRENT_MIDI.store(0);
+        *self.midis.write() = midis;
+    }
+
+    pub fn switch_midi(&self, index: usize, path: impl AsRef<Path>) {
+        CURRENT_MIDI.store(index);
+        STATE.store(State::Stop);
+        self.read_midi(path);
     }
 }
 

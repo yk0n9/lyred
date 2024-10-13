@@ -1,8 +1,10 @@
-use eframe::egui::{Context, Separator, Ui};
+use std::path::Path;
+
+use eframe::egui::{Context, SelectableLabel, Separator, Ui};
 use eframe::{egui, App, Frame};
 
 use crate::maps::MAP;
-use crate::midi::is_playing;
+use crate::midi::{is_playing, State, CURRENT_MIDI, STATE};
 use crate::ui::play::Play;
 use crate::util::{vk_display, KEY_CODE};
 use crate::COUNT;
@@ -119,6 +121,38 @@ impl App for Play {
                                     });
                             });
                     }
+                }
+            });
+
+        egui::Window::new("MIDI列表")
+            .scroll([true, true])
+            .open(&mut self.dir_enable)
+            .show(ctx, |ui| {
+                let midis = self.midi.midis.read();
+                if midis.is_empty() {
+                    return;
+                }
+                for (index, midi_file) in midis.iter().enumerate() {
+                    ui.horizontal(|ui| {
+                        let cond = CURRENT_MIDI.load().eq(&index);
+                        if ui.button("▶").clicked() {
+                            let midi = self.midi.clone();
+                            midi.switch_midi(
+                                index,
+                                Path::new(self.config.midi_dir.0.read().as_str()).join(midi_file),
+                            );
+                            STATE.store(State::Playing);
+                            midi.playback_one(self.offset, self.mode);
+                        }
+                        let file = ui.add(SelectableLabel::new(cond, midi_file));
+                        if file.clicked() {
+                            let midi = self.midi.clone();
+                            midi.switch_midi(
+                                index,
+                                Path::new(self.config.midi_dir.0.read().as_str()).join(midi_file),
+                            );
+                        }
+                    });
                 }
             });
     }
