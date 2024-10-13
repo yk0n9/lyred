@@ -65,6 +65,7 @@ pub enum Mode {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum PlayMode {
     Once,
+    OneLoop,
     Loop,
     Random,
 }
@@ -192,6 +193,7 @@ impl View for Play {
         ui.horizontal(|ui| {
             ui.label("播放模式:");
             ui.radio_value(&mut self.play_mode, PlayMode::Once, "单次");
+            ui.radio_value(&mut self.play_mode, PlayMode::OneLoop, "单曲循环");
             ui.radio_value(&mut self.play_mode, PlayMode::Loop, "列表循环");
             ui.radio_value(&mut self.play_mode, PlayMode::Random, "列表随机");
         });

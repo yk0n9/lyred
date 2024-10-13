@@ -264,9 +264,14 @@ impl Midi {
         LOCAL.store(0);
     }
 
-    pub fn playback_one(self, offset: i32, mode: Mode) {
+    pub fn playback_one(self, offset: i32, mode: Mode, once: bool) {
         POOL.spawn(move || {
-            self.playback(offset, mode);
+            loop {
+                self.playback(offset, mode);
+                if STATE.load() == State::Stop || !once {
+                    break;
+                }
+            }
             STATE.store(State::Stop);
         });
     }
@@ -304,9 +309,9 @@ impl Midi {
 
     pub fn playback_by(self, path: impl AsRef<Path>, offset: i32, play_mode: PlayMode, mode: Mode) {
         match play_mode {
-            PlayMode::Once => {
+            PlayMode::Once | PlayMode::OneLoop => {
                 STATE.store(State::Playing);
-                self.playback_one(offset, mode);
+                self.playback_one(offset, mode, play_mode.eq(&PlayMode::OneLoop));
             }
             PlayMode::Loop | PlayMode::Random => {
                 if !self.midis.read().is_empty() {
