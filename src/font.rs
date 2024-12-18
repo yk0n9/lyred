@@ -11,9 +11,10 @@ pub fn load_fonts(ctx: &egui::Context) {
         .unwrap()
         .to_vec();
     let mut font_defs = egui::FontDefinitions::default();
-    font_defs
-        .font_data
-        .insert(font_name.to_string(), egui::FontData::from_owned(font));
+    font_defs.font_data.insert(
+        font_name.to_string(),
+        egui::FontData::from_owned(font).into(),
+    );
     font_defs
         .families
         .get_mut(&egui::FontFamily::Proportional)
