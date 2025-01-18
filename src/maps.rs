@@ -1,6 +1,9 @@
-use std::mem::size_of;
+use std::mem;
 
-use windows::Win32::UI::Input::KeyboardAndMouse::*;
+use winapi::um::winuser::{
+    GetAsyncKeyState, INPUT_u, MapVirtualKeyA, SendInput, INPUT, INPUT_KEYBOARD, KEYBDINPUT,
+    MAPVK_VK_TO_VSC,
+};
 
 use crate::ui::play::Mode;
 
@@ -10,8 +13,7 @@ pub static mut MAP: [u16; 21] = [
 
 #[inline]
 pub fn is_pressed(vk: u16) -> bool {
-    let status = unsafe { GetAsyncKeyState(vk as i32) as u32 };
-    status >> 31 == 1
+    unsafe { GetAsyncKeyState(vk as i32) >> 15 != 0 }
 }
 
 #[inline]
@@ -26,48 +28,48 @@ pub fn get_map(mode: Mode) -> impl Fn(i32) {
 pub fn gen_shin(key: i32) {
     unsafe {
         match key {
-            24 => click(VIRTUAL_KEY(MAP[14])),
-            26 => click(VIRTUAL_KEY(MAP[15])),
-            28 => click(VIRTUAL_KEY(MAP[16])),
-            29 => click(VIRTUAL_KEY(MAP[17])),
-            31 => click(VIRTUAL_KEY(MAP[18])),
-            33 => click(VIRTUAL_KEY(MAP[19])),
-            35 => click(VIRTUAL_KEY(MAP[20])),
-            36 => click(VIRTUAL_KEY(MAP[14])),
-            38 => click(VIRTUAL_KEY(MAP[15])),
-            40 => click(VIRTUAL_KEY(MAP[16])),
-            41 => click(VIRTUAL_KEY(MAP[17])),
-            43 => click(VIRTUAL_KEY(MAP[18])),
-            45 => click(VIRTUAL_KEY(MAP[19])),
-            47 => click(VIRTUAL_KEY(MAP[20])),
-            48 => click(VIRTUAL_KEY(MAP[14])),
-            50 => click(VIRTUAL_KEY(MAP[15])),
-            52 => click(VIRTUAL_KEY(MAP[16])),
-            53 => click(VIRTUAL_KEY(MAP[17])),
-            55 => click(VIRTUAL_KEY(MAP[18])),
-            57 => click(VIRTUAL_KEY(MAP[19])),
-            59 => click(VIRTUAL_KEY(MAP[20])),
-            60 => click(VIRTUAL_KEY(MAP[7])),
-            62 => click(VIRTUAL_KEY(MAP[8])),
-            64 => click(VIRTUAL_KEY(MAP[9])),
-            65 => click(VIRTUAL_KEY(MAP[10])),
-            67 => click(VIRTUAL_KEY(MAP[11])),
-            69 => click(VIRTUAL_KEY(MAP[12])),
-            71 => click(VIRTUAL_KEY(MAP[13])),
-            72 => click(VIRTUAL_KEY(MAP[0])),
-            74 => click(VIRTUAL_KEY(MAP[1])),
-            76 => click(VIRTUAL_KEY(MAP[2])),
-            77 => click(VIRTUAL_KEY(MAP[3])),
-            79 => click(VIRTUAL_KEY(MAP[4])),
-            81 => click(VIRTUAL_KEY(MAP[5])),
-            83 => click(VIRTUAL_KEY(MAP[6])),
-            84 => click(VIRTUAL_KEY(MAP[0])),
-            86 => click(VIRTUAL_KEY(MAP[1])),
-            88 => click(VIRTUAL_KEY(MAP[2])),
-            89 => click(VIRTUAL_KEY(MAP[3])),
-            91 => click(VIRTUAL_KEY(MAP[4])),
-            93 => click(VIRTUAL_KEY(MAP[5])),
-            95 => click(VIRTUAL_KEY(MAP[6])),
+            24 => click(MAP[14]),
+            26 => click(MAP[15]),
+            28 => click(MAP[16]),
+            29 => click(MAP[17]),
+            31 => click(MAP[18]),
+            33 => click(MAP[19]),
+            35 => click(MAP[20]),
+            36 => click(MAP[14]),
+            38 => click(MAP[15]),
+            40 => click(MAP[16]),
+            41 => click(MAP[17]),
+            43 => click(MAP[18]),
+            45 => click(MAP[19]),
+            47 => click(MAP[20]),
+            48 => click(MAP[14]),
+            50 => click(MAP[15]),
+            52 => click(MAP[16]),
+            53 => click(MAP[17]),
+            55 => click(MAP[18]),
+            57 => click(MAP[19]),
+            59 => click(MAP[20]),
+            60 => click(MAP[7]),
+            62 => click(MAP[8]),
+            64 => click(MAP[9]),
+            65 => click(MAP[10]),
+            67 => click(MAP[11]),
+            69 => click(MAP[12]),
+            71 => click(MAP[13]),
+            72 => click(MAP[0]),
+            74 => click(MAP[1]),
+            76 => click(MAP[2]),
+            77 => click(MAP[3]),
+            79 => click(MAP[4]),
+            81 => click(MAP[5]),
+            83 => click(MAP[6]),
+            84 => click(MAP[0]),
+            86 => click(MAP[1]),
+            88 => click(MAP[2]),
+            89 => click(MAP[3]),
+            91 => click(MAP[4]),
+            93 => click(MAP[5]),
+            95 => click(MAP[6]),
             _ => {}
         };
     }
@@ -76,103 +78,107 @@ pub fn gen_shin(key: i32) {
 #[inline(always)]
 pub fn vr_chat(key: i32) {
     match key {
-        36 => click(VIRTUAL_KEY(90)),
-        37 => click(VIRTUAL_KEY(188)),
-        38 => click(VIRTUAL_KEY(88)),
-        39 => click(VIRTUAL_KEY(190)),
-        40 => click(VIRTUAL_KEY(67)),
-        41 => click(VIRTUAL_KEY(86)),
-        42 => click(VIRTUAL_KEY(191)),
-        43 => click(VIRTUAL_KEY(66)),
-        44 => click(VIRTUAL_KEY(96)),
-        45 => click(VIRTUAL_KEY(78)),
-        46 => click(VIRTUAL_KEY(110)),
-        47 => click(VIRTUAL_KEY(77)),
-        48 => click(VIRTUAL_KEY(65)),
-        49 => click(VIRTUAL_KEY(75)),
-        50 => click(VIRTUAL_KEY(83)),
-        51 => click(VIRTUAL_KEY(76)),
-        52 => click(VIRTUAL_KEY(68)),
-        53 => click(VIRTUAL_KEY(70)),
-        54 => click(VIRTUAL_KEY(186)),
-        55 => click(VIRTUAL_KEY(71)),
-        56 => click(VIRTUAL_KEY(98)),
-        57 => click(VIRTUAL_KEY(72)),
-        58 => click(VIRTUAL_KEY(99)),
-        59 => click(VIRTUAL_KEY(74)),
-        60 => click(VIRTUAL_KEY(81)),
-        61 => click(VIRTUAL_KEY(73)),
-        62 => click(VIRTUAL_KEY(87)),
-        63 => click(VIRTUAL_KEY(79)),
-        64 => click(VIRTUAL_KEY(69)),
-        65 => click(VIRTUAL_KEY(82)),
-        66 => click(VIRTUAL_KEY(80)),
-        67 => click(VIRTUAL_KEY(84)),
-        68 => click(VIRTUAL_KEY(101)),
-        69 => click(VIRTUAL_KEY(89)),
-        70 => click(VIRTUAL_KEY(102)),
-        71 => click(VIRTUAL_KEY(85)),
-        72 => click(VIRTUAL_KEY(49)),
-        73 => click(VIRTUAL_KEY(56)),
-        74 => click(VIRTUAL_KEY(50)),
-        75 => click(VIRTUAL_KEY(57)),
-        76 => click(VIRTUAL_KEY(51)),
-        77 => click(VIRTUAL_KEY(52)),
-        78 => click(VIRTUAL_KEY(48)),
-        79 => click(VIRTUAL_KEY(53)),
-        80 => click(VIRTUAL_KEY(104)),
-        81 => click(VIRTUAL_KEY(54)),
-        82 => click(VIRTUAL_KEY(105)),
-        83 => click(VIRTUAL_KEY(55)),
-        84 => click(VIRTUAL_KEY(112)),
-        85 => click(VIRTUAL_KEY(119)),
-        86 => click(VIRTUAL_KEY(113)),
-        87 => click(VIRTUAL_KEY(120)),
-        88 => click(VIRTUAL_KEY(114)),
-        89 => click(VIRTUAL_KEY(115)),
-        90 => click(VIRTUAL_KEY(121)),
-        91 => click(VIRTUAL_KEY(116)),
-        92 => click(VIRTUAL_KEY(111)),
-        93 => click(VIRTUAL_KEY(117)),
-        94 => click(VIRTUAL_KEY(106)),
-        95 => click(VIRTUAL_KEY(118)),
+        36 => click(90),
+        37 => click(188),
+        38 => click(88),
+        39 => click(190),
+        40 => click(67),
+        41 => click(86),
+        42 => click(191),
+        43 => click(66),
+        44 => click(96),
+        45 => click(78),
+        46 => click(110),
+        47 => click(77),
+        48 => click(65),
+        49 => click(75),
+        50 => click(83),
+        51 => click(76),
+        52 => click(68),
+        53 => click(70),
+        54 => click(186),
+        55 => click(71),
+        56 => click(98),
+        57 => click(72),
+        58 => click(99),
+        59 => click(74),
+        60 => click(81),
+        61 => click(73),
+        62 => click(87),
+        63 => click(79),
+        64 => click(69),
+        65 => click(82),
+        66 => click(80),
+        67 => click(84),
+        68 => click(101),
+        69 => click(89),
+        70 => click(102),
+        71 => click(85),
+        72 => click(49),
+        73 => click(56),
+        74 => click(50),
+        75 => click(57),
+        76 => click(51),
+        77 => click(52),
+        78 => click(48),
+        79 => click(53),
+        80 => click(104),
+        81 => click(54),
+        82 => click(105),
+        83 => click(55),
+        84 => click(112),
+        85 => click(119),
+        86 => click(113),
+        87 => click(120),
+        88 => click(114),
+        89 => click(115),
+        90 => click(121),
+        91 => click(116),
+        92 => click(111),
+        93 => click(117),
+        94 => click(106),
+        95 => click(118),
         _ => {}
     };
 }
 
-const SIZE: i32 = size_of::<INPUT>() as i32;
-
 #[inline(always)]
-fn click(vk: VIRTUAL_KEY) {
+fn click(vk: u16) {
     unsafe {
+        let mut inputs = [
+            INPUT {
+                type_: INPUT_KEYBOARD,
+                u: {
+                    let mut u = mem::zeroed::<INPUT_u>();
+                    *u.ki_mut() = KEYBDINPUT {
+                        wVk: vk,
+                        wScan: MapVirtualKeyA(vk as _, MAPVK_VK_TO_VSC) as _,
+                        dwFlags: 0,
+                        time: 0,
+                        dwExtraInfo: 0,
+                    };
+                    u
+                },
+            },
+            INPUT {
+                type_: INPUT_KEYBOARD,
+                u: {
+                    let mut u = mem::zeroed::<INPUT_u>();
+                    *u.ki_mut() = KEYBDINPUT {
+                        wVk: vk,
+                        wScan: MapVirtualKeyA(vk as _, MAPVK_VK_TO_VSC) as _,
+                        dwFlags: 2,
+                        time: 0,
+                        dwExtraInfo: 0,
+                    };
+                    u
+                },
+            },
+        ];
         SendInput(
-            &[
-                INPUT {
-                    r#type: INPUT_KEYBOARD,
-                    Anonymous: INPUT_0 {
-                        ki: KEYBDINPUT {
-                            wVk: vk,
-                            wScan: MapVirtualKeyA(vk.0 as u32, MAPVK_VK_TO_VSC) as u16,
-                            dwFlags: KEYBD_EVENT_FLAGS(0),
-                            time: 0,
-                            dwExtraInfo: 0,
-                        },
-                    },
-                },
-                INPUT {
-                    r#type: INPUT_KEYBOARD,
-                    Anonymous: INPUT_0 {
-                        ki: KEYBDINPUT {
-                            wVk: vk,
-                            wScan: MapVirtualKeyA(vk.0 as u32, MAPVK_VK_TO_VSC) as u16,
-                            dwFlags: KEYBD_EVENT_FLAGS(2),
-                            time: 0,
-                            dwExtraInfo: 0,
-                        },
-                    },
-                },
-            ],
-            SIZE,
+            inputs.len() as _,
+            inputs.as_mut_ptr(),
+            mem::size_of::<INPUT>() as _,
         );
     }
 }

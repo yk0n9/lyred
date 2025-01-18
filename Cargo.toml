@@ -14,7 +14,7 @@ eframe = "0.30"
 rfd = "0.15"
 parking_lot = "0.12"
 font-kit = "0.14"
-windows = { version = "0.58", features = ["Win32_UI_Input_KeyboardAndMouse"] }
+winapi = { version = "0.3", features = ["winuser"] }
 ron = "0.8"
 serde = { version = "1", features = ["derive"] }
 crossbeam = "0.8"
