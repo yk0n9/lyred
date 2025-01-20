@@ -209,7 +209,7 @@ impl View for Play {
         });
         SPEED.store(self.speed);
         ui.horizontal(|ui| {
-            let sub = is_pressed(189) || is_pressed(109);
+            let sub = is_pressed(VKey::Minus) || is_pressed(VKey::NpSubtract);
             if !sub {
                 self.control_key.sub = false;
             }
@@ -220,7 +220,7 @@ impl View for Play {
                     SPEED.store(self.speed);
                 }
             }
-            let add = is_pressed(187) || is_pressed(107);
+            let add = is_pressed(VKey::Equal) || is_pressed(VKey::NpAdd);
             if !add {
                 self.control_key.add = false;
             }
