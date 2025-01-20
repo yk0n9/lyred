@@ -5,15 +5,35 @@ use winapi::um::winuser::{
     MAPVK_VK_TO_VSC,
 };
 
-use crate::ui::play::Mode;
+use crate::{ui::play::Mode, util::VKey};
 
-pub static mut MAP: [u16; 21] = [
-    81, 87, 69, 82, 84, 89, 85, 65, 83, 68, 70, 71, 72, 74, 90, 88, 67, 86, 66, 78, 77,
+pub static mut MAP: [VKey; 21] = [
+    VKey::Q,
+    VKey::W,
+    VKey::E,
+    VKey::R,
+    VKey::T,
+    VKey::Y,
+    VKey::U,
+    VKey::A,
+    VKey::S,
+    VKey::D,
+    VKey::F,
+    VKey::G,
+    VKey::H,
+    VKey::J,
+    VKey::Z,
+    VKey::X,
+    VKey::C,
+    VKey::V,
+    VKey::B,
+    VKey::N,
+    VKey::M,
 ];
 
 #[inline]
-pub fn is_pressed(vk: u16) -> bool {
-    unsafe { GetAsyncKeyState(vk as i32) >> 15 != 0 }
+pub fn is_pressed(vk: VKey) -> bool {
+    unsafe { GetAsyncKeyState(vk as _) >> 15 != 0 }
 }
 
 #[inline]
@@ -25,9 +45,9 @@ pub fn get_map(mode: Mode) -> impl Fn(i32) {
 }
 
 #[inline(always)]
-pub fn gen_shin(key: i32) {
+pub fn gen_shin(val: i32) {
     unsafe {
-        match key {
+        match val {
             24 => click(MAP[14]),
             26 => click(MAP[15]),
             28 => click(MAP[16]),
@@ -76,8 +96,8 @@ pub fn gen_shin(key: i32) {
 }
 
 #[inline(always)]
-pub fn vr_chat(key: i32) {
-    match key {
+pub fn vr_chat(val: i32) {
+    match val {
         36 => click(90),
         37 => click(188),
         38 => click(88),
@@ -143,7 +163,7 @@ pub fn vr_chat(key: i32) {
 }
 
 #[inline(always)]
-fn click(vk: u16) {
+fn click(vk: VKey) {
     unsafe {
         let mut inputs = [
             INPUT {
@@ -151,7 +171,7 @@ fn click(vk: u16) {
                 u: {
                     let mut u = mem::zeroed::<INPUT_u>();
                     *u.ki_mut() = KEYBDINPUT {
-                        wVk: vk,
+                        wVk: vk as _,
                         wScan: MapVirtualKeyA(vk as _, MAPVK_VK_TO_VSC) as _,
                         dwFlags: 0,
                         time: 0,
@@ -165,7 +185,7 @@ fn click(vk: u16) {
                 u: {
                     let mut u = mem::zeroed::<INPUT_u>();
                     *u.ki_mut() = KEYBDINPUT {
-                        wVk: vk,
+                        wVk: vk as _,
                         wScan: MapVirtualKeyA(vk as _, MAPVK_VK_TO_VSC) as _,
                         dwFlags: 2,
                         time: 0,

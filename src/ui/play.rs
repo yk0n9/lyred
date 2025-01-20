@@ -9,12 +9,13 @@ use eframe::egui::{FontId, Slider, Ui};
 use eframe::{egui, CreationContext};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
+use strum::IntoEnumIterator;
 
 use crate::font::load_fonts;
 use crate::maps::{is_pressed, MAP};
 use crate::midi::{Midi, State, PLAYING, SPEED, STATE};
 use crate::ui::View;
-use crate::util::{vk_display, KEY_CODE};
+use crate::util::VKey;
 use crate::{COUNT, LOCAL, POOL, TIME_SHIFT};
 
 #[derive(Debug, Clone)]
@@ -43,17 +44,17 @@ pub struct ControlKey {
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct FunctionKey {
-    pub play: u16,
-    pub pause: u16,
-    pub stop: u16,
+    pub play: VKey,
+    pub pause: VKey,
+    pub stop: VKey,
 }
 
 impl Default for FunctionKey {
     fn default() -> Self {
         Self {
-            play: 32,
-            pause: 8,
-            stop: 17,
+            play: VKey::Space,
+            pause: VKey::BackSpace,
+            stop: VKey::Control,
         }
     }
 }
@@ -125,7 +126,7 @@ pub struct MidiDir(pub Arc<RwLock<String>>);
 pub struct Config {
     pub midi_dir: MidiDir,
     pub function_key: FunctionKey,
-    pub map: [u16; 21],
+    pub map: [VKey; 21],
 }
 
 impl Serialize for MidiDir {
@@ -287,20 +288,19 @@ impl View for Play {
         ui.horizontal(|ui| {
             ui.label("按下");
             egui::ComboBox::from_id_salt("Play")
-                .selected_text(vk_display(self.config.function_key.play))
+                .selected_text(self.config.function_key.play.to_string())
                 .show_ui(ui, |ui| {
-                    KEY_CODE
-                        .iter()
+                    VKey::iter()
                         .filter(|k| unsafe {
-                            self.config.function_key.pause.ne(*k)
-                                && self.config.function_key.stop.ne(*k)
-                                && !MAP.contains(*k)
+                            self.config.function_key.pause.ne(k)
+                                && self.config.function_key.stop.ne(k)
+                                && !MAP.contains(k)
                         })
                         .for_each(|key| {
                             ui.selectable_value(
                                 &mut self.config.function_key.play,
-                                *key,
-                                vk_display(*key),
+                                key,
+                                key.to_string(),
                             );
                         })
                 });
@@ -309,20 +309,19 @@ impl View for Play {
         ui.horizontal(|ui| {
             ui.label("按下");
             egui::ComboBox::from_id_salt("Pause")
-                .selected_text(vk_display(self.config.function_key.pause))
+                .selected_text(self.config.function_key.pause.to_string())
                 .show_ui(ui, |ui| {
-                    KEY_CODE
-                        .iter()
+                    VKey::iter()
                         .filter(|k| unsafe {
-                            self.config.function_key.play.ne(*k)
-                                && self.config.function_key.stop.ne(*k)
-                                && !MAP.contains(*k)
+                            self.config.function_key.play.ne(k)
+                                && self.config.function_key.stop.ne(k)
+                                && !MAP.contains(k)
                         })
                         .for_each(|key| {
                             ui.selectable_value(
                                 &mut self.config.function_key.pause,
-                                *key,
-                                vk_display(*key),
+                                key,
+                                key.to_string(),
                             );
                         })
                 });
@@ -331,20 +330,19 @@ impl View for Play {
         ui.horizontal(|ui| {
             ui.label("按下");
             egui::ComboBox::from_id_salt("Stop")
-                .selected_text(vk_display(self.config.function_key.stop))
+                .selected_text(self.config.function_key.stop.to_string())
                 .show_ui(ui, |ui| {
-                    KEY_CODE
-                        .iter()
+                    VKey::iter()
                         .filter(|k| unsafe {
-                            self.config.function_key.play.ne(*k)
-                                && self.config.function_key.pause.ne(*k)
-                                && !MAP.contains(*k)
+                            self.config.function_key.play.ne(k)
+                                && self.config.function_key.pause.ne(k)
+                                && !MAP.contains(k)
                         })
                         .for_each(|key| {
                             ui.selectable_value(
                                 &mut self.config.function_key.stop,
-                                *key,
-                                vk_display(*key),
+                                key,
+                                key.to_string(),
                             );
                         })
                 });

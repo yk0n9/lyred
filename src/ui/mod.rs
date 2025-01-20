@@ -3,11 +3,12 @@ use std::path::Path;
 
 use eframe::egui::{Context, SelectableLabel, Separator, Ui};
 use eframe::{egui, App, Frame};
+use strum::IntoEnumIterator;
 
 use crate::maps::MAP;
 use crate::midi::{is_playing, CURRENT_MIDI};
 use crate::ui::play::Play;
-use crate::util::{vk_display, KEY_CODE};
+use crate::util::VKey;
 use crate::COUNT;
 
 pub mod play;
@@ -106,17 +107,16 @@ impl App for Play {
                     for key in 0..7 {
                         let id = i * 7 + key;
                         egui::ComboBox::from_label(format!("{}{}", level, key + 1))
-                            .selected_text(vk_display(MAP[id]))
+                            .selected_text(MAP[id].to_string())
                             .show_ui(ui, |ui| {
-                                KEY_CODE
-                                    .iter()
+                                VKey::iter()
                                     .filter(|k| {
-                                        self.config.function_key.pause.ne(*k)
-                                            && self.config.function_key.play.ne(*k)
-                                            && self.config.function_key.stop.ne(*k)
+                                        self.config.function_key.pause.ne(k)
+                                            && self.config.function_key.play.ne(k)
+                                            && self.config.function_key.stop.ne(k)
                                     })
                                     .for_each(|key| {
-                                        ui.selectable_value(&mut MAP[id], *key, vk_display(*key));
+                                        ui.selectable_value(&mut MAP[id], key, key.to_string());
                                     });
                             });
                     }
