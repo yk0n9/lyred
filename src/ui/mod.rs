@@ -107,7 +107,7 @@ impl App for Play {
                     for key in 0..7 {
                         let id = i * 7 + key;
                         egui::ComboBox::from_label(format!("{}{}", level, key + 1))
-                            .selected_text(MAP[id].to_string())
+                            .selected_text(MAP[id].as_ref())
                             .show_ui(ui, |ui| {
                                 VKey::iter()
                                     .filter(|k| {
@@ -116,7 +116,7 @@ impl App for Play {
                                             && self.config.function_key.stop.ne(k)
                                     })
                                     .for_each(|key| {
-                                        ui.selectable_value(&mut MAP[id], key, key.to_string());
+                                        ui.selectable_value(&mut MAP[id], key, key.as_ref());
                                     });
                             });
                     }

@@ -288,7 +288,7 @@ impl View for Play {
         ui.horizontal(|ui| {
             ui.label("按下");
             egui::ComboBox::from_id_salt("Play")
-                .selected_text(self.config.function_key.play.to_string())
+                .selected_text(self.config.function_key.play.as_ref())
                 .show_ui(ui, |ui| {
                     VKey::iter()
                         .filter(|k| unsafe {
@@ -300,7 +300,7 @@ impl View for Play {
                             ui.selectable_value(
                                 &mut self.config.function_key.play,
                                 key,
-                                key.to_string(),
+                                key.as_ref(),
                             );
                         })
                 });
@@ -309,7 +309,7 @@ impl View for Play {
         ui.horizontal(|ui| {
             ui.label("按下");
             egui::ComboBox::from_id_salt("Pause")
-                .selected_text(self.config.function_key.pause.to_string())
+                .selected_text(self.config.function_key.pause.as_ref())
                 .show_ui(ui, |ui| {
                     VKey::iter()
                         .filter(|k| unsafe {
@@ -321,7 +321,7 @@ impl View for Play {
                             ui.selectable_value(
                                 &mut self.config.function_key.pause,
                                 key,
-                                key.to_string(),
+                                key.as_ref(),
                             );
                         })
                 });
@@ -330,7 +330,7 @@ impl View for Play {
         ui.horizontal(|ui| {
             ui.label("按下");
             egui::ComboBox::from_id_salt("Stop")
-                .selected_text(self.config.function_key.stop.to_string())
+                .selected_text(self.config.function_key.stop.as_ref())
                 .show_ui(ui, |ui| {
                     VKey::iter()
                         .filter(|k| unsafe {
@@ -342,7 +342,7 @@ impl View for Play {
                             ui.selectable_value(
                                 &mut self.config.function_key.stop,
                                 key,
-                                key.to_string(),
+                                key.as_ref(),
                             );
                         })
                 });

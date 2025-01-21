@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
-use strum::{Display, EnumIter};
+use strum::{AsRefStr, EnumIter};
 
 #[repr(u16)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter, Display, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter, AsRefStr, Serialize, Deserialize)]
 pub enum VKey {
     A = 65,
     B = 66,
