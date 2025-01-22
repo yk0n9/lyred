@@ -76,7 +76,7 @@ impl Midi {
         }
     }
 
-    fn play<F: Fn(i32)>(&self, f: F) {
+    fn play<F: Fn(i32)>(&self, offset: i32, f: F) {
         let events = self.events.read();
         let mut start_time = Instant::now();
         let mut input_time = 0.0;
@@ -98,7 +98,7 @@ impl Midi {
                 sleep(Duration::from_micros(current));
             }
             match STATE.load() {
-                State::Playing => f(e.press),
+                State::Playing => f(e.press + offset),
                 State::Pause => {
                     while STATE.load() == State::Pause {}
                     input_time = e.delay;
@@ -256,7 +256,7 @@ impl Midi {
     pub fn playback(&self, offset: i32, mode: Mode) {
         let send = get_map(mode);
         PLAYING.store(true);
-        self.play(|key| send(key + offset));
+        self.play(offset, send);
         PLAYING.store(false);
         LOCAL.store(0);
     }
