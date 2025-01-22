@@ -226,7 +226,7 @@ impl Midi {
                 }
             });
         }
-        current.par_sort_by_key(|e| e.tick as usize);
+        current.par_sort_by_key(|e| e.tick);
 
         let mut tick = 0;
         let mut tempo = DEFAULT_TEMPO_MPQ;
