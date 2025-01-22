@@ -207,9 +207,9 @@ impl Midi {
                 let mut cond = true;
                 if let Some(next) = next {
                     cond = if let Some(peek) = keys.peek() {
-                        event.tick >= next.tick && event.tick < peek.tick
+                        (next.tick..peek.tick).contains(&event.tick)
                     } else {
-                        event.tick >= next.tick
+                        (next.tick..).contains(&event.tick)
                     };
                     if let ValidEvent::Note(ref mut note) = event.event {
                         if cond {
