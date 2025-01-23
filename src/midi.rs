@@ -29,12 +29,6 @@ pub fn is_playing() -> bool {
     !matches!(STATE.load(), State::Stop)
 }
 
-const DEFAULT_TEMPO_MPQ: u32 = 500000;
-const MAP: &[i32] = &[
-    24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62, 64,
-    65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95,
-];
-
 #[derive(Debug, Clone)]
 pub struct Midi {
     pub name: Arc<RwLock<Option<String>>>,
@@ -197,6 +191,8 @@ impl Midi {
     }
 
     pub fn merge_tracks(&self, indices: &[usize], offset: i32) {
+        const DEFAULT_TEMPO_MPQ: u32 = 500000;
+
         let mut current = vec![];
         let mut tracks = self.tracks.read().to_vec();
         let track_keys = self.track_keys.read();
@@ -325,6 +321,11 @@ impl Midi {
     }
 
     pub fn detect(&self, offset: i32) -> f32 {
+        const MAP: &[i32] = &[
+            24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60,
+            62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95,
+        ];
+
         let events = self.events.read();
         let all = events.len() as f32;
         let mut count = 0;
