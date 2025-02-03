@@ -260,7 +260,7 @@ impl View for Play {
         ui.label(self.state);
         if STATE.load() != State::Stop {
             self.progress = LOCAL.load();
-            let count = unsafe { &*COUNT.as_ptr() };
+            let count = COUNT.read();
             let current = self.progress;
             let len = count.len().saturating_sub(1);
             if len > 0

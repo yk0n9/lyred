@@ -9,7 +9,6 @@ use crate::maps::MAP;
 use crate::midi::{is_playing, CURRENT_MIDI};
 use crate::ui::play::Play;
 use crate::util::VKey;
-use crate::COUNT;
 
 pub mod play;
 
@@ -161,10 +160,7 @@ impl App for Play {
     }
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
-        drop(COUNT.take());
-        unsafe {
-            self.config.map = MAP;
-        }
+        self.config.map = unsafe { MAP };
         ron::to_string(&self.config)
             .inspect(|config| {
                 std::fs::write("config.ron", config).ok();

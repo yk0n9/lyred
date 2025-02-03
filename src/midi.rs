@@ -245,7 +245,7 @@ impl Midi {
                 _ => None,
             })
             .collect();
-        COUNT.store(count);
+        *COUNT.write() = count;
         self.hit_rate.store(self.detect(offset));
     }
 
@@ -289,8 +289,8 @@ impl Midi {
                     break;
                 }
                 if random {
-                    let mut rng = rand::thread_rng();
-                    index = rng.gen_range(0..max);
+                    let mut rng = rand::rng();
+                    index = rng.random_range(0..max);
                 } else {
                     index += 1;
                 }
