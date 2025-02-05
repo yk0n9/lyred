@@ -261,7 +261,7 @@ impl Midi {
         POOL.spawn(move || {
             loop {
                 self.playback(offset, mode);
-                if STATE.load() == State::Stop || !once {
+                if STATE.load() == State::Stop || once {
                     break;
                 }
             }
@@ -304,7 +304,7 @@ impl Midi {
         match play_mode {
             PlayMode::Once | PlayMode::OneLoop => {
                 STATE.store(State::Playing);
-                self.playback_one(offset, mode, play_mode.eq(&PlayMode::OneLoop));
+                self.playback_one(offset, mode, matches!(play_mode, PlayMode::Once));
             }
             PlayMode::Loop | PlayMode::Random => {
                 if !self.midis.read().is_empty() {
