@@ -19,7 +19,7 @@ ron = "0.8"
 serde = { version = "1", features = ["derive"] }
 crossbeam = "0.8"
 rand = "0.9"
-strum = { version = "0.26", features = ["derive"] }
+strum = { version = "0.27", features = ["derive"] }
 
 [build-dependencies]
 embed-resource = "3"
