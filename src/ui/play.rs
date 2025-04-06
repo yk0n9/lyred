@@ -205,9 +205,9 @@ impl View for Play {
             ui.add(Slider::new(&mut self.speed, 0.1..=5.0).prefix("播放速度:"));
             if ui.button("还原").clicked() {
                 self.speed = 1.0;
+                SPEED.store(self.speed);
             }
         });
-        SPEED.store(self.speed);
         ui.horizontal(|ui| {
             let sub = is_pressed(VKey::Minus) || is_pressed(VKey::NpSubtract);
             if !sub {
