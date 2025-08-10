@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::path::Path;
 
-use eframe::egui::{Context, SelectableLabel, Separator, Ui};
+use eframe::egui::{Button, Context, Separator, Ui};
 use eframe::{egui, App, Frame};
 use strum::IntoEnumIterator;
 
@@ -146,7 +146,7 @@ impl App for Play {
                                 self.mode,
                             );
                         }
-                        let file = ui.add(SelectableLabel::new(cond, midi_file));
+                        let file = ui.add(Button::selectable(cond, midi_file));
                         if file.clicked() {
                             let midi = self.midi.clone();
                             midi.switch_midi(

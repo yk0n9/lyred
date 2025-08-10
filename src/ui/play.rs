@@ -3,9 +3,7 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use eframe::egui::FontFamily::Proportional;
-use eframe::egui::TextStyle::*;
-use eframe::egui::{FontId, Slider, Ui};
+use eframe::egui::{Slider, Ui};
 use eframe::{egui, CreationContext};
 use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
@@ -76,19 +74,6 @@ pub enum PlayMode {
 impl Play {
     pub fn new(cc: &CreationContext) -> Self {
         load_fonts(&cc.egui_ctx);
-        let mut style = (*cc.egui_ctx.style()).clone();
-        style.text_styles = [
-            (Heading, FontId::new(20.0, Proportional)),
-            (Name("Heading2".into()), FontId::new(25.0, Proportional)),
-            (Name("Context".into()), FontId::new(23.0, Proportional)),
-            (Body, FontId::new(18.0, Proportional)),
-            (Monospace, FontId::new(14.0, Proportional)),
-            (Button, FontId::new(14.0, Proportional)),
-            (Small, FontId::new(10.0, Proportional)),
-        ]
-        .into();
-        cc.egui_ctx.set_style(style);
-
         Self {
             midi: Midi::new(),
             speed: 1.0,
