@@ -1,12 +1,10 @@
 use std::path::Path;
 use std::sync::Arc;
-use std::thread::sleep;
 use std::time::{Duration, Instant};
 
 use crossbeam::atomic::AtomicCell;
 use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 use parking_lot::RwLock;
-use rand::Rng;
 use rayon::slice::ParallelSliceMut;
 
 use crate::maps::get_map;
@@ -70,7 +68,8 @@ impl Midi {
         }
     }
 
-    fn play<F: Fn(i32)>(&self, offset: i32, f: F) {
+    fn play<F: Fn(i32, bool)>(&self, offset: i32, f: F) {
+        let sleeper = spin_sleep::SpinSleeper::default();
         let events = self.events.read();
         let mut start_time = Instant::now();
         let mut input_time = 0.0;
@@ -89,10 +88,10 @@ impl Midi {
 
             input_time += e.delay / SPEED.load();
             if let current @ 1.. = (input_time - start_time.elapsed().as_micros() as f32) as u64 {
-                sleep(Duration::from_micros(current));
+                sleeper.sleep(Duration::from_micros(current));
             }
             match STATE.load() {
-                State::Playing => f(e.press + offset),
+                State::Playing => f(e.press + offset, e.is_on),
                 State::Pause => {
                     while STATE.load() == State::Pause {}
                     input_time = e.delay;
@@ -169,11 +168,15 @@ impl Midi {
                                 ..
                             } => {
                                 if vel > 0 {
-                                    ValidEvent::Note(key.as_int() as i32)
+                                    ValidEvent::NoteOn(key.as_int() as i32)
                                 } else {
-                                    ValidEvent::Other
+                                    ValidEvent::NoteOff(key.as_int() as i32)
                                 }
                             }
+                            TrackEventKind::Midi {
+                                message: MidiMessage::NoteOff { key, .. },
+                                ..
+                            } => ValidEvent::NoteOff(key.as_int() as i32),
                             _ => ValidEvent::Other,
                         };
                         RawEvent { event, tick }
@@ -207,10 +210,13 @@ impl Midi {
                     } else {
                         (next.tick..).contains(&event.tick)
                     };
-                    if let ValidEvent::Note(ref mut note) = event.event {
-                        if cond {
-                            *note += next.real;
+                    match event.event {
+                        ValidEvent::NoteOn(ref mut note) | ValidEvent::NoteOff(ref mut note) => {
+                            if cond {
+                                *note += next.real;
+                            }
                         }
+                        _ => {}
                     }
                 }
                 if !cond {
@@ -231,12 +237,27 @@ impl Midi {
         *self.events.write() = current
             .into_iter()
             .filter_map(|event| match event.event {
-                ValidEvent::Note(press) => {
+                ValidEvent::NoteOn(press) => {
                     let delay = Self::tick2micros(event.tick - tick, tempo, self.fps.load());
                     time += delay as usize;
                     count.push(time);
                     tick = event.tick;
-                    Some(Event { press, delay })
+                    Some(Event {
+                        press,
+                        delay,
+                        is_on: true,
+                    })
+                }
+                ValidEvent::NoteOff(press) => {
+                    let delay = Self::tick2micros(event.tick - tick, tempo, self.fps.load());
+                    time += delay as usize;
+                    count.push(time);
+                    tick = event.tick;
+                    Some(Event {
+                        press,
+                        delay,
+                        is_on: false,
+                    })
                 }
                 ValidEvent::Tempo(t) => {
                     tempo = t;
@@ -289,8 +310,7 @@ impl Midi {
                     break;
                 }
                 if random {
-                    let mut rng = rand::rng();
-                    index = rng.random_range(0..max);
+                    index = rand::random_range(0..max);
                 } else {
                     index += 1;
                 }
@@ -327,25 +347,28 @@ impl Midi {
         ];
 
         let events = self.events.read();
-        let all = events.len() as f32;
+        let mut total_notes = 0;
         let mut count = 0;
         events.iter().for_each(|e| {
-            if MAP.contains(&(e.press + offset)) {
-                count += 1;
+            if e.is_on {
+                total_notes += 1;
+                if MAP.contains(&(e.press + offset)) {
+                    count += 1;
+                }
             }
         });
-        count as f32 / all
+        if total_notes == 0 {
+            0.0
+        } else {
+            count as f32 / total_notes as f32
+        }
     }
 
-    /// 1. The difference in microseconds between two events
-    /// 2. The time in microseconds this event was in track
     #[inline]
     fn tick2micros(tick: u32, tempo_mpq: u32, fps: f32) -> f32 {
         tick as f32 * tempo_mpq as f32 / fps
     }
 
-    /// 1. MPQ-Tempo to BPM-Tempo
-    /// 2. BPM-Tempo to MPQ-Tempo
     #[allow(dead_code)]
     #[inline]
     fn convert_tempo(mut tempo: f32) -> f32 {
@@ -401,7 +424,8 @@ impl Midi {
 
 #[derive(Debug, Copy, Clone)]
 enum ValidEvent {
-    Note(i32),
+    NoteOn(i32),
+    NoteOff(i32),
     Tempo(u32),
     Other,
 }
@@ -422,4 +446,5 @@ pub struct RawEvent {
 pub struct Event {
     pub press: i32,
     pub delay: f32,
+    pub is_on: bool,
 }

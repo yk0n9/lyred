@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 
 use crate::font::load_fonts;
-use crate::maps::{is_pressed, MAP};
+use crate::maps::{is_pressed, release_all, MAP};
 use crate::midi::{Midi, State, PLAYING, SPEED, STATE};
 use crate::ui::View;
 use crate::util::VKey;
@@ -61,6 +61,7 @@ impl Default for FunctionKey {
 pub enum Mode {
     GenShin,
     VRChat,
+    DeltaForce,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -177,6 +178,7 @@ impl View for Play {
             ui.label("选择模式:");
             ui.radio_value(&mut self.mode, Mode::GenShin, "GenShin");
             ui.radio_value(&mut self.mode, Mode::VRChat, "VRChat-中文吧");
+            ui.radio_value(&mut self.mode, Mode::DeltaForce, "DeltaForce");
         });
         ui.horizontal(|ui| {
             ui.label("播放模式:");
@@ -354,10 +356,12 @@ impl View for Play {
             }
         }
         if is_pressed(self.config.function_key.stop) {
+            release_all();
             STATE.store(State::Stop);
         }
         if is_pressed(self.config.function_key.pause) {
             if let State::Playing = STATE.load() {
+                release_all();
                 STATE.store(State::Pause);
             }
         }

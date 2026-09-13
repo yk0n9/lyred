@@ -8,7 +8,10 @@ b: cl
 
 build:
     cargo build --release
-    cp target/release/lyred.exe lyred.exe
+    cp ./target/release/lyred.exe ./lyred.exe
+
+run: build
+    ./lyred
 
 push msg:
     git commit -m "{{msg}}"
