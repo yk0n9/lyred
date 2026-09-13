@@ -7,7 +7,7 @@ use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 use parking_lot::RwLock;
 use rayon::slice::ParallelSliceMut;
 
-use crate::maps::get_map;
+use crate::maps::{get_map, release_all};
 use crate::ui::play::{Mode, PlayMode};
 use crate::{COUNT, LOCAL, POOL, TIME_SHIFT};
 
@@ -37,6 +37,7 @@ pub struct Midi {
     pub track_keys: Arc<RwLock<Vec<Vec<TrackKey>>>>,
     pub hit_rate: Arc<AtomicCell<f32>>,
     pub midis: Arc<RwLock<Vec<String>>>,
+    pub is_single: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -65,6 +66,7 @@ impl Midi {
             track_keys: Arc::new(RwLock::new(vec![])),
             hit_rate: Arc::new(Default::default()),
             midis: Arc::new(RwLock::new(vec![])),
+            is_single: false,
         }
     }
 
@@ -101,6 +103,7 @@ impl Midi {
                 State::Stop => break,
             }
         }
+        release_all();
     }
 
     pub fn init(self) {
@@ -229,6 +232,37 @@ impl Midi {
             });
         }
         current.par_sort_by_key(|e| e.tick);
+
+        if self.is_single {
+            use std::collections::{HashMap, HashSet};
+            let mut max_note_map: HashMap<u32, i32> = HashMap::new();
+            for e in &current {
+                if let ValidEvent::NoteOn(note) = e.event {
+                    max_note_map
+                        .entry(e.tick)
+                        .and_modify(|m| *m = (*m).max(note))
+                        .or_insert(note);
+                }
+            }
+
+            let mut active_highest_notes = HashSet::new();
+            current.retain(|e| match e.event {
+                ValidEvent::NoteOn(note) => {
+                    if let Some(&max_note) = max_note_map.get(&e.tick) {
+                        if note == max_note {
+                            active_highest_notes.insert(note);
+                            true
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
+                }
+                ValidEvent::NoteOff(note) => active_highest_notes.remove(&note),
+                _ => true, // 保留 Tempo、KeySignature 等其他事件
+            });
+        }
 
         let mut tick = 0;
         let mut tempo = DEFAULT_TEMPO_MPQ;

@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 
 use crate::font::load_fonts;
-use crate::maps::{is_pressed, release_all, MAP};
+use crate::maps::{is_pressed, MAP};
 use crate::midi::{Midi, State, PLAYING, SPEED, STATE};
 use crate::ui::View;
 use crate::util::VKey;
@@ -241,6 +241,7 @@ impl View for Play {
             ui.toggle_value(&mut self.tracks_enable, "音轨列表");
             ui.toggle_value(&mut self.pitch_enable, "音调列表");
             ui.toggle_value(&mut self.map_enable, "按键映射");
+            ui.checkbox(&mut self.midi.is_single, "同一时刻取最高音调");
         });
         ui.separator();
 
@@ -356,12 +357,10 @@ impl View for Play {
             }
         }
         if is_pressed(self.config.function_key.stop) {
-            release_all();
             STATE.store(State::Stop);
         }
         if is_pressed(self.config.function_key.pause) {
             if let State::Playing = STATE.load() {
-                release_all();
                 STATE.store(State::Pause);
             }
         }

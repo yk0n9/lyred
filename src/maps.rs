@@ -184,67 +184,94 @@ pub fn vr_chat(val: i32, is_on: bool) {
 
 #[inline]
 pub fn delta_force(val: i32, is_on: bool) {
-    // 定义辅助闭包：处理带有鼠标修饰键的复合按键
-    let dispatch = |vk: VKey, mouse: Option<MouseButton>| {
-        if is_on {
-            if let Some(mb) = mouse {
-                mouse_press(mb);
-            }
-            handle_key(vk, true);
-        } else {
-            handle_key(vk, false);
-            if let Some(mb) = mouse {
+    let (vk, mice) = match note_to_key_and_mice(val) {
+        Some(res) => res,
+        None => return,
+    };
+
+    const ALL_MODIFIERS: [MouseButton; 3] =
+        [MouseButton::Left, MouseButton::Right, MouseButton::Middle];
+
+    if is_on {
+        for &mb in &ALL_MODIFIERS {
+            if !mice.contains(&mb) {
                 mouse_release(mb);
             }
         }
+
+        for &mb in mice {
+            mouse_press(mb);
+        }
+
+        handle_key(vk, true);
+    } else {
+        handle_key(vk, false);
+        for &mb in mice.iter().rev() {
+            mouse_release(mb);
+        }
+    }
+}
+
+/// 将 MIDI 音符值解析为对应的键盘按键与鼠标变调组合
+fn note_to_key_and_mice(val: i32) -> Option<(VKey, &'static [MouseButton])> {
+    const M_LEFT: &[MouseButton] = &[MouseButton::Left];
+    const M_LEFT_MID: &[MouseButton] = &[MouseButton::Left, MouseButton::Middle];
+    const M_NONE: &[MouseButton] = &[];
+    const M_MID: &[MouseButton] = &[MouseButton::Middle];
+    const M_RIGHT: &[MouseButton] = &[MouseButton::Right];
+    const M_RIGHT_MID: &[MouseButton] = &[MouseButton::Right, MouseButton::Middle];
+
+    let res = match val {
+        // 低音区 (48~59 / C3~B3) -> Left 键变调
+        48 => (VKey::Z, M_LEFT),
+        49 => (VKey::Z, M_LEFT_MID),
+        50 => (VKey::X, M_LEFT),
+        51 => (VKey::X, M_LEFT_MID),
+        52 => (VKey::C, M_LEFT),
+        53 => (VKey::V, M_LEFT),
+        54 => (VKey::V, M_LEFT_MID),
+        55 => (VKey::B, M_LEFT),
+        56 => (VKey::B, M_LEFT_MID),
+        57 => (VKey::N, M_LEFT),
+        58 => (VKey::N, M_LEFT_MID),
+        59 => (VKey::M, M_LEFT),
+
+        // 中音区 (60~71 / C4~B4) -> 无 Octave 变调 (必要时仅保留 Middle 升半音)
+        60 => (VKey::Z, M_NONE),
+        61 => (VKey::Z, M_MID),
+        62 => (VKey::X, M_NONE),
+        63 => (VKey::X, M_MID),
+        64 => (VKey::C, M_NONE),
+        65 => (VKey::V, M_NONE),
+        66 => (VKey::V, M_MID),
+        67 => (VKey::B, M_NONE),
+        68 => (VKey::B, M_MID),
+        69 => (VKey::N, M_NONE),
+        70 => (VKey::N, M_MID),
+        71 => (VKey::M, M_NONE),
+
+        // 高音区 (72~83 / C5~B5) -> Right 键变调
+        72 => (VKey::Z, M_RIGHT),
+        73 => (VKey::Z, M_RIGHT_MID),
+        74 => (VKey::X, M_RIGHT),
+        75 => (VKey::X, M_RIGHT_MID),
+        76 => (VKey::C, M_RIGHT),
+        77 => (VKey::V, M_RIGHT),
+        78 => (VKey::V, M_RIGHT_MID),
+        79 => (VKey::B, M_RIGHT),
+        80 => (VKey::B, M_RIGHT_MID),
+        81 => (VKey::N, M_RIGHT),
+        82 => (VKey::N, M_RIGHT_MID),
+        83 => (VKey::M, M_RIGHT),
+
+        // 倍高音区 (84~85 / C6~C#6)
+        84 => (VKey::Comma, M_RIGHT),
+        85 => (VKey::Comma, M_RIGHT_MID),
+
+        _ => return None,
     };
 
-    match val {
-        // ================= 低音区 (降调: 鼠标左键 Left) =================
-        48 => dispatch(VKey::Z, Some(MouseButton::Left)), // 低音 1 (C3)
-        49 => dispatch(VKey::Z, Some(MouseButton::Left)), // 低音 #1 (C#3) -> 组合鼠标中键可按需增强，若游戏中只靠降调按键则映射至主按键
-        50 => dispatch(VKey::X, Some(MouseButton::Left)), // 低音 2 (D3)
-        51 => dispatch(VKey::X, Some(MouseButton::Left)), // 低音 #2 (D#3)
-        52 => dispatch(VKey::C, Some(MouseButton::Left)), // 低音 3 (E3)
-        53 => dispatch(VKey::V, Some(MouseButton::Left)), // 低音 4 (F3)
-        54 => dispatch(VKey::V, Some(MouseButton::Left)), // 低音 #4 (F#3)
-        55 => dispatch(VKey::B, Some(MouseButton::Left)), // 低音 5 (G3)
-        56 => dispatch(VKey::B, Some(MouseButton::Left)), // 低音 #5 (G#3)
-        57 => dispatch(VKey::N, Some(MouseButton::Left)), // 低音 6 (A3)
-        58 => dispatch(VKey::N, Some(MouseButton::Left)), // 低音 #6 (A#3)
-        59 => dispatch(VKey::M, Some(MouseButton::Left)), // 低音 7 (B3)
-
-        // ================= 中音区 (自然音: 无鼠标修饰) =================
-        60 => dispatch(VKey::Z, None), // 中音 1 (C4)
-        61 => dispatch(VKey::Z, Some(MouseButton::Middle)), // 中音 #1 (C#4) -> 半音
-        62 => dispatch(VKey::X, None), // 中音 2 (D4)
-        63 => dispatch(VKey::X, Some(MouseButton::Middle)), // 中音 #2 (D#4) -> 半音
-        64 => dispatch(VKey::C, None), // 中音 3 (E4)
-        65 => dispatch(VKey::V, None), // 中音 4 (F4)
-        66 => dispatch(VKey::V, Some(MouseButton::Middle)), // 中音 #4 (F#4) -> 半音
-        67 => dispatch(VKey::B, None), // 中音 5 (G4)
-        68 => dispatch(VKey::B, Some(MouseButton::Middle)), // 中音 #5 (G#4) -> 半音
-        69 => dispatch(VKey::N, None), // 中音 6 (A4)
-        70 => dispatch(VKey::N, Some(MouseButton::Middle)), // 中音 #6 (A#4) -> 半音
-        71 => dispatch(VKey::M, None), // 中音 7 (B4)
-
-        // ================= 高音区 (升调: 鼠标右键 Right) =================
-        72 => dispatch(VKey::Comma, None), // 高音 1 (C5) -> 原图中的逗号键
-        73 => dispatch(VKey::Z, Some(MouseButton::Right)), // 高音 #1 (C#5)
-        74 => dispatch(VKey::X, Some(MouseButton::Right)), // 高音 2 (D5)
-        75 => dispatch(VKey::X, Some(MouseButton::Right)), // 高音 #2 (D#5)
-        76 => dispatch(VKey::C, Some(MouseButton::Right)), // 高音 3 (E5)
-        77 => dispatch(VKey::V, Some(MouseButton::Right)), // 高音 4 (F5)
-        78 => dispatch(VKey::V, Some(MouseButton::Right)), // 高音 #4 (F#5)
-        79 => dispatch(VKey::B, Some(MouseButton::Right)), // 高音 5 (G5)
-        80 => dispatch(VKey::B, Some(MouseButton::Right)), // 高音 #5 (G#5)
-        81 => dispatch(VKey::N, Some(MouseButton::Right)), // 高音 6 (A5)
-        82 => dispatch(VKey::N, Some(MouseButton::Right)), // 高音 #6 (A#5)
-        83 => dispatch(VKey::M, Some(MouseButton::Right)), // 高音 7 (B5)
-        84 => dispatch(VKey::Comma, Some(MouseButton::Right)), // 倍高音 1 (C6)
-
-        _ => {}
-    }
+    Some(res)
 }
 
 fn press(vk: VKey) {
@@ -302,7 +329,7 @@ fn click(vk: VKey) {
     release(vk);
 }
 
-#[derive(Clone, Copy, EnumIter)]
+#[derive(Clone, Copy, EnumIter, PartialEq, Eq)]
 pub enum MouseButton {
     Left,
     Right,
@@ -370,75 +397,4 @@ pub fn mouse_release(button: MouseButton) {
 
 pub fn release_all() {
     MouseButton::iter().for_each(|it| mouse_release(it));
-    let keys = [
-        // 字母键 (来自 MAP 数组以及 VRChat / DeltaForce 映射)
-        VKey::Q,
-        VKey::W,
-        VKey::E,
-        VKey::R,
-        VKey::T,
-        VKey::Y,
-        VKey::U,
-        VKey::A,
-        VKey::S,
-        VKey::D,
-        VKey::F,
-        VKey::G,
-        VKey::H,
-        VKey::J,
-        VKey::K,
-        VKey::L,
-        VKey::Z,
-        VKey::X,
-        VKey::C,
-        VKey::V,
-        VKey::B,
-        VKey::N,
-        VKey::M,
-        VKey::I,
-        VKey::O,
-        VKey::P,
-        // 标点符号键
-        VKey::Comma,
-        VKey::Period,
-        VKey::Slash,
-        VKey::Semicolon,
-        // 主键盘数字键
-        VKey::Num0,
-        VKey::Num1,
-        VKey::Num2,
-        VKey::Num3,
-        VKey::Num4,
-        VKey::Num5,
-        VKey::Num6,
-        VKey::Num7,
-        VKey::Num8,
-        VKey::Num9,
-        // 功能键 (F1 - F10)
-        VKey::F1,
-        VKey::F2,
-        VKey::F3,
-        VKey::F4,
-        VKey::F5,
-        VKey::F6,
-        VKey::F7,
-        VKey::F8,
-        VKey::F9,
-        VKey::F10,
-        // 小键盘按键
-        VKey::Np0,
-        VKey::Np2,
-        VKey::Np3,
-        VKey::Np5,
-        VKey::Np6,
-        VKey::Np8,
-        VKey::Np9,
-        VKey::NpDecimal,
-        VKey::NpDivide,
-        VKey::NpMultiply,
-    ];
-
-    for vk in keys {
-        release(vk);
-    }
 }
