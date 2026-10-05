@@ -112,7 +112,6 @@ pub struct Config {
     pub function_key: FunctionKey,
     pub map: [VKey; 21],
     pub mode: Mode,
-    pub is_single: bool,
 }
 
 impl Serialize for MidiDir {
@@ -141,7 +140,6 @@ impl Default for Config {
             function_key: Default::default(),
             map: unsafe { MAP },
             mode: Mode::GenShin,
-            is_single: false,
         }
     }
 }
@@ -249,7 +247,6 @@ impl View for Play {
             ui.toggle_value(&mut self.tracks_enable, "音轨列表");
             ui.toggle_value(&mut self.pitch_enable, "音调列表");
             ui.toggle_value(&mut self.map_enable, "按键映射");
-            ui.checkbox(&mut self.midi.is_single, "同一时刻取最高音调");
         });
         ui.separator();
 

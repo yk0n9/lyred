@@ -163,7 +163,6 @@ impl App for Play {
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
         self.config.map = unsafe { MAP };
-        self.config.is_single = self.midi.is_single;
         ron::to_string(&self.config)
             .inspect(|config| {
                 std::fs::write("config.ron", config).ok();

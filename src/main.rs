@@ -45,7 +45,6 @@ fn run() {
                 unsafe {
                     MAP = play.config.map;
                 }
-                play.midi.is_single = play.config.is_single;
             }
             Ok(Box::new(play))
         }),

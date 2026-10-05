@@ -37,7 +37,6 @@ pub struct Midi {
     pub track_keys: Arc<RwLock<Vec<Vec<TrackKey>>>>,
     pub hit_rate: Arc<AtomicCell<f32>>,
     pub midis: Arc<RwLock<Vec<String>>>,
-    pub is_single: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -66,11 +65,10 @@ impl Midi {
             track_keys: Arc::new(RwLock::new(vec![])),
             hit_rate: Arc::new(Default::default()),
             midis: Arc::new(RwLock::new(vec![])),
-            is_single: false,
         }
     }
 
-    fn play<F: Fn(i32, bool)>(&self, offset: i32, f: F) {
+    fn play<F: Fn(i32, bool)>(&self, offset: i32, f: F, mode: Mode) {
         let sleeper = spin_sleep::SpinSleeper::default();
         let events = self.events.read();
         let mut start_time = Instant::now();
@@ -103,7 +101,7 @@ impl Midi {
                 State::Stop => break,
             }
         }
-        if self.is_single {
+        if matches!(mode, Mode::DeltaForce) {
             release_all();
         }
     }
@@ -233,36 +231,55 @@ impl Midi {
                 }
             });
         }
-        current.par_sort_by_key(|e| e.tick);
+        current.par_sort_by_key(|e| (e.tick, matches!(e.event, ValidEvent::NoteOn(_))));
 
-        if self.is_single {
-            use std::collections::{HashMap, HashSet};
+        if matches!(mode, Mode::DeltaForce) {
+            use std::collections::HashMap;
+
             let mut max_note_map: HashMap<u32, i32> = HashMap::new();
             for e in &current {
                 if let ValidEvent::NoteOn(note) = e.event {
-                    max_note_map
-                        .entry(e.tick)
-                        .and_modify(|m| *m = (*m).max(note))
-                        .or_insert(note);
+                    if Self::is_valid_note(mode, note + offset) {
+                        max_note_map
+                            .entry(e.tick)
+                            .and_modify(|m| *m = (*m).max(note))
+                            .or_insert(note);
+                    }
                 }
             }
 
-            let mut active_highest_notes = HashSet::new();
+            let mut active_note_counts: HashMap<i32, usize> = HashMap::new();
+            let mut last_retained_noteon: Option<(u32, i32)> = None;
+
             current.retain(|e| match e.event {
                 ValidEvent::NoteOn(note) => {
-                    if let Some(&max_note) = max_note_map.get(&e.tick) {
-                        if note == max_note {
-                            active_highest_notes.insert(note);
-                            true
-                        } else {
-                            false
+                    if max_note_map.get(&e.tick) == Some(&note) {
+                        if last_retained_noteon == Some((e.tick, note)) {
+                            return false;
                         }
+                        last_retained_noteon = Some((e.tick, note));
+
+                        *active_note_counts.entry(note).or_default() += 1;
+                        true
                     } else {
                         false
                     }
                 }
-                ValidEvent::NoteOff(note) => active_highest_notes.remove(&note),
-                _ => true, // 保留 Tempo、KeySignature 等其他事件
+                ValidEvent::NoteOff(note) => {
+                    if let std::collections::hash_map::Entry::Occupied(mut entry) =
+                        active_note_counts.entry(note)
+                    {
+                        let count = entry.get_mut();
+                        *count -= 1;
+                        if *count == 0 {
+                            entry.remove();
+                        }
+                        true
+                    } else {
+                        false
+                    }
+                }
+                _ => true,
             });
         }
 
@@ -309,7 +326,7 @@ impl Midi {
     pub fn playback(&self, offset: i32, mode: Mode) {
         let send = get_map(mode);
         PLAYING.store(true);
-        self.play(offset, send);
+        self.play(offset, send, mode);
         PLAYING.store(false);
         LOCAL.store(0);
     }
