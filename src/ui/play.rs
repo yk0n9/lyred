@@ -20,7 +20,6 @@ use crate::{COUNT, LOCAL, POOL, TIME_SHIFT};
 pub struct Play {
     pub midi: Midi,
     pub speed: f32,
-    pub mode: Mode,
     pub play_mode: PlayMode,
     pub state: &'static str,
     pub tracks_enable: bool,
@@ -57,7 +56,7 @@ impl Default for FunctionKey {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Mode {
     GenShin,
     VRChat,
@@ -78,7 +77,6 @@ impl Play {
         Self {
             midi: Midi::new(),
             speed: 1.0,
-            mode: Mode::GenShin,
             play_mode: PlayMode::Once,
             state: "已停止",
             tracks_enable: false,
@@ -113,6 +111,8 @@ pub struct Config {
     pub midi_dir: MidiDir,
     pub function_key: FunctionKey,
     pub map: [VKey; 21],
+    pub mode: Mode,
+    pub is_single: bool,
 }
 
 impl Serialize for MidiDir {
@@ -140,6 +140,8 @@ impl Default for Config {
             midi_dir: MidiDir(Arc::new(RwLock::new(String::new()))),
             function_key: Default::default(),
             map: unsafe { MAP },
+            mode: Mode::GenShin,
+            is_single: false,
         }
     }
 }
@@ -152,7 +154,7 @@ impl View for Play {
             if ui.button("选择MIDI文件").clicked() {
                 STATE.store(State::Stop);
                 self.offset = 0;
-                self.midi.clone().init();
+                self.midi.clone().init(self.config.mode);
             }
             if ui.button("选择MIDI目录").clicked() {
                 STATE.store(State::Stop);
@@ -176,9 +178,9 @@ impl View for Play {
         ui.separator();
         ui.horizontal(|ui| {
             ui.label("选择模式:");
-            ui.radio_value(&mut self.mode, Mode::GenShin, "GenShin");
-            ui.radio_value(&mut self.mode, Mode::VRChat, "VRChat-中文吧");
-            ui.radio_value(&mut self.mode, Mode::DeltaForce, "DeltaForce");
+            ui.radio_value(&mut self.config.mode, Mode::GenShin, "GenShin");
+            ui.radio_value(&mut self.config.mode, Mode::VRChat, "VRChat-中文吧");
+            ui.radio_value(&mut self.config.mode, Mode::DeltaForce, "DeltaForce");
         });
         ui.horizontal(|ui| {
             ui.label("播放模式:");
@@ -226,16 +228,22 @@ impl View for Play {
             ));
             if ui.button("还原偏移量").clicked() {
                 self.offset = 0;
-                self.midi.hit_rate.store(self.midi.detect(self.offset));
+                self.midi
+                    .hit_rate
+                    .store(self.midi.detect(self.config.mode, self.offset));
             }
         });
         if ui.button("向上调音").clicked() {
             self.offset += 1;
-            self.midi.hit_rate.store(self.midi.detect(self.offset));
+            self.midi
+                .hit_rate
+                .store(self.midi.detect(self.config.mode, self.offset));
         }
         if ui.button("向下调音").clicked() {
             self.offset -= 1;
-            self.midi.hit_rate.store(self.midi.detect(self.offset));
+            self.midi
+                .hit_rate
+                .store(self.midi.detect(self.config.mode, self.offset));
         }
         ui.horizontal(|ui| {
             ui.toggle_value(&mut self.tracks_enable, "音轨列表");
@@ -348,7 +356,7 @@ impl View for Play {
                             self.config.midi_dir.0.read().as_str(),
                             self.offset,
                             self.play_mode,
-                            self.mode,
+                            self.config.mode,
                         );
                     }
                 }

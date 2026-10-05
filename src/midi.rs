@@ -103,21 +103,23 @@ impl Midi {
                 State::Stop => break,
             }
         }
-        release_all();
+        if self.is_single {
+            release_all();
+        }
     }
 
-    pub fn init(self) {
+    pub fn init(self, mode: Mode) {
         POOL.spawn(move || {
             if let Some(ref path) = rfd::FileDialog::new()
                 .add_filter("MIDI File", &["mid"])
                 .pick_file()
             {
-                self.read_midi(path);
+                self.read_midi(path, mode);
             }
         });
     }
 
-    pub fn read_midi(&self, path: impl AsRef<Path>) {
+    pub fn read_midi(&self, path: impl AsRef<Path>, mode: Mode) {
         let path = path.as_ref();
         let file = std::fs::read(path).unwrap_or_default();
         let Ok(smf) = Smf::parse(&file) else {
@@ -193,10 +195,10 @@ impl Midi {
 
         *self.track_keys.write() = track_keys;
         *self.track_num.write() = track_num;
-        self.merge_tracks(&(0..track_len).collect::<Vec<_>>(), 0);
+        self.merge_tracks(&(0..track_len).collect::<Vec<_>>(), 0, mode);
     }
 
-    pub fn merge_tracks(&self, indices: &[usize], offset: i32) {
+    pub fn merge_tracks(&self, indices: &[usize], offset: i32, mode: Mode) {
         const DEFAULT_TEMPO_MPQ: u32 = 500000;
 
         let mut current = vec![];
@@ -301,7 +303,7 @@ impl Midi {
             })
             .collect();
         *COUNT.write() = count;
-        self.hit_rate.store(self.detect(offset));
+        self.hit_rate.store(self.detect(mode, offset));
     }
 
     pub fn playback(&self, offset: i32, mode: Mode) {
@@ -338,7 +340,7 @@ impl Midi {
                 let midis = self.midis.read();
                 let file = midis[index].as_str();
                 CURRENT_MIDI.store(index);
-                self.read_midi(path.join(file));
+                self.read_midi(path.join(file), mode);
                 self.playback(0, mode);
                 if let State::Stop = STATE.load() {
                     break;
@@ -374,27 +376,40 @@ impl Midi {
         }
     }
 
-    pub fn detect(&self, offset: i32) -> f32 {
-        const MAP: &[i32] = &[
-            24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60,
-            62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91, 93, 95,
-        ];
-
+    pub fn detect(&self, mode: Mode, offset: i32) -> f32 {
         let events = self.events.read();
         let mut total_notes = 0;
         let mut count = 0;
+
         events.iter().for_each(|e| {
             if e.is_on {
                 total_notes += 1;
-                if MAP.contains(&(e.press + offset)) {
+                if Self::is_valid_note(mode, e.press + offset) {
                     count += 1;
                 }
             }
         });
+
         if total_notes == 0 {
             0.0
         } else {
             count as f32 / total_notes as f32
+        }
+    }
+
+    #[inline]
+    pub fn is_valid_note(mode: Mode, note: i32) -> bool {
+        match mode {
+            Mode::GenShin => {
+                const GENSHIN_MAP: &[i32] = &[
+                    24, 26, 28, 29, 31, 33, 35, 36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57,
+                    59, 60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84, 86, 88, 89, 91,
+                    93, 95,
+                ];
+                GENSHIN_MAP.binary_search(&note).is_ok()
+            }
+            Mode::VRChat => (36..=95).contains(&note),
+            Mode::DeltaForce => (48..=85).contains(&note),
         }
     }
 
@@ -449,10 +464,10 @@ impl Midi {
         *self.midis.write() = midis;
     }
 
-    pub fn switch_midi(&self, index: usize, path: impl AsRef<Path>) {
+    pub fn switch_midi(&self, index: usize, path: impl AsRef<Path>, mode: Mode) {
         CURRENT_MIDI.store(index);
         STATE.store(State::Stop);
-        self.read_midi(path);
+        self.read_midi(path, mode);
     }
 }
 

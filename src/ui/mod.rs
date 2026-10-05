@@ -94,7 +94,7 @@ impl App for Play {
             });
         if self.notify_merge && !is_playing() {
             self.midi
-                .merge_tracks(&self.midi.current_range(), self.offset);
+                .merge_tracks(&self.midi.current_range(), self.offset, self.config.mode);
             self.notify_merge = false;
         }
         egui::Window::new("按键映射")
@@ -138,12 +138,13 @@ impl App for Play {
                             midi.switch_midi(
                                 index,
                                 Path::new(self.config.midi_dir.0.read().as_str()).join(midi_file),
+                                self.config.mode,
                             );
                             midi.playback_by(
                                 self.config.midi_dir.0.read().as_str(),
                                 self.offset,
                                 self.play_mode,
-                                self.mode,
+                                self.config.mode,
                             );
                         }
                         let file = ui.add(Button::selectable(cond, midi_file));
@@ -152,6 +153,7 @@ impl App for Play {
                             midi.switch_midi(
                                 index,
                                 Path::new(self.config.midi_dir.0.read().as_str()).join(midi_file),
+                                self.config.mode,
                             );
                         }
                     });
@@ -161,6 +163,7 @@ impl App for Play {
 
     fn on_exit(&mut self, _gl: Option<&eframe::glow::Context>) {
         self.config.map = unsafe { MAP };
+        self.config.is_single = self.midi.is_single;
         ron::to_string(&self.config)
             .inspect(|config| {
                 std::fs::write("config.ron", config).ok();
