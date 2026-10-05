@@ -59,53 +59,59 @@ fn handle_key(vk: VKey, is_on: bool) {
 
 #[inline]
 pub fn gen_shin(val: i32, is_on: bool) {
+    if !is_on {
+        return;
+    }
+
     unsafe {
         match val {
-            24 => handle_key(MAP[14], is_on),
-            26 => handle_key(MAP[15], is_on),
-            28 => handle_key(MAP[16], is_on),
-            29 => handle_key(MAP[17], is_on),
-            31 => handle_key(MAP[18], is_on),
-            33 => handle_key(MAP[19], is_on),
-            35 => handle_key(MAP[20], is_on),
-            36 => handle_key(MAP[14], is_on),
-            38 => handle_key(MAP[15], is_on),
-            40 => handle_key(MAP[16], is_on),
-            41 => handle_key(MAP[17], is_on),
-            43 => handle_key(MAP[18], is_on),
-            45 => handle_key(MAP[19], is_on),
-            47 => handle_key(MAP[20], is_on),
+            24 => click(MAP[14]),
+            26 => click(MAP[15]),
+            28 => click(MAP[16]),
+            29 => click(MAP[17]),
+            31 => click(MAP[18]),
+            33 => click(MAP[19]),
+            35 => click(MAP[20]),
 
-            48 => handle_key(MAP[14], is_on),
-            50 => handle_key(MAP[15], is_on),
-            52 => handle_key(MAP[16], is_on),
-            53 => handle_key(MAP[17], is_on),
-            55 => handle_key(MAP[18], is_on),
-            57 => handle_key(MAP[19], is_on),
-            59 => handle_key(MAP[20], is_on),
+            36 => click(MAP[14]),
+            38 => click(MAP[15]),
+            40 => click(MAP[16]),
+            41 => click(MAP[17]),
+            43 => click(MAP[18]),
+            45 => click(MAP[19]),
+            47 => click(MAP[20]),
 
-            60 => handle_key(MAP[7], is_on),
-            62 => handle_key(MAP[8], is_on),
-            64 => handle_key(MAP[9], is_on),
-            65 => handle_key(MAP[10], is_on),
-            67 => handle_key(MAP[11], is_on),
-            69 => handle_key(MAP[12], is_on),
-            71 => handle_key(MAP[13], is_on),
+            48 => click(MAP[14]),
+            50 => click(MAP[15]),
+            52 => click(MAP[16]),
+            53 => click(MAP[17]),
+            55 => click(MAP[18]),
+            57 => click(MAP[19]),
+            59 => click(MAP[20]),
 
-            72 => handle_key(MAP[0], is_on),
-            74 => handle_key(MAP[1], is_on),
-            76 => handle_key(MAP[2], is_on),
-            77 => handle_key(MAP[3], is_on),
-            79 => handle_key(MAP[4], is_on),
-            81 => handle_key(MAP[5], is_on),
-            83 => handle_key(MAP[6], is_on),
-            84 => handle_key(MAP[0], is_on),
-            86 => handle_key(MAP[1], is_on),
-            88 => handle_key(MAP[2], is_on),
-            89 => handle_key(MAP[3], is_on),
-            91 => handle_key(MAP[4], is_on),
-            93 => handle_key(MAP[5], is_on),
-            95 => handle_key(MAP[6], is_on),
+            60 => click(MAP[7]),
+            62 => click(MAP[8]),
+            64 => click(MAP[9]),
+            65 => click(MAP[10]),
+            67 => click(MAP[11]),
+            69 => click(MAP[12]),
+            71 => click(MAP[13]),
+
+            72 => click(MAP[0]),
+            74 => click(MAP[1]),
+            76 => click(MAP[2]),
+            77 => click(MAP[3]),
+            79 => click(MAP[4]),
+            81 => click(MAP[5]),
+            83 => click(MAP[6]),
+
+            84 => click(MAP[0]),
+            86 => click(MAP[1]),
+            88 => click(MAP[2]),
+            89 => click(MAP[3]),
+            91 => click(MAP[4]),
+            93 => click(MAP[5]),
+            95 => click(MAP[6]),
             _ => {}
         };
     }
@@ -113,71 +119,75 @@ pub fn gen_shin(val: i32, is_on: bool) {
 
 #[inline]
 pub fn vr_chat(val: i32, is_on: bool) {
+    if !is_on {
+        return;
+    }
+
     match val {
-        36 => handle_key(VKey::Z, is_on),
-        37 => handle_key(VKey::Comma, is_on),
-        38 => handle_key(VKey::X, is_on),
-        39 => handle_key(VKey::Period, is_on),
-        40 => handle_key(VKey::C, is_on),
-        41 => handle_key(VKey::V, is_on),
-        42 => handle_key(VKey::Slash, is_on),
-        43 => handle_key(VKey::B, is_on),
-        44 => handle_key(VKey::Np0, is_on),
-        45 => handle_key(VKey::N, is_on),
-        46 => handle_key(VKey::NpDecimal, is_on),
-        47 => handle_key(VKey::M, is_on),
+        36 => click(VKey::Z),
+        37 => click(VKey::Comma),
+        38 => click(VKey::X),
+        39 => click(VKey::Period),
+        40 => click(VKey::C),
+        41 => click(VKey::V),
+        42 => click(VKey::Slash),
+        43 => click(VKey::B),
+        44 => click(VKey::Np0),
+        45 => click(VKey::N),
+        46 => click(VKey::NpDecimal),
+        47 => click(VKey::M),
 
-        48 => handle_key(VKey::A, is_on),
-        49 => handle_key(VKey::K, is_on),
-        50 => handle_key(VKey::S, is_on),
-        51 => handle_key(VKey::L, is_on),
-        52 => handle_key(VKey::D, is_on),
-        53 => handle_key(VKey::F, is_on),
-        54 => handle_key(VKey::Semicolon, is_on),
-        55 => handle_key(VKey::G, is_on),
-        56 => handle_key(VKey::Np2, is_on),
-        57 => handle_key(VKey::H, is_on),
-        58 => handle_key(VKey::Np3, is_on),
-        59 => handle_key(VKey::J, is_on),
+        48 => click(VKey::A),
+        49 => click(VKey::K),
+        50 => click(VKey::S),
+        51 => click(VKey::L),
+        52 => click(VKey::D),
+        53 => click(VKey::F),
+        54 => click(VKey::Semicolon),
+        55 => click(VKey::G),
+        56 => click(VKey::Np2),
+        57 => click(VKey::H),
+        58 => click(VKey::Np3),
+        59 => click(VKey::J),
 
-        60 => handle_key(VKey::Q, is_on),
-        61 => handle_key(VKey::I, is_on),
-        62 => handle_key(VKey::W, is_on),
-        63 => handle_key(VKey::O, is_on),
-        64 => handle_key(VKey::E, is_on),
-        65 => handle_key(VKey::R, is_on),
-        66 => handle_key(VKey::P, is_on),
-        67 => handle_key(VKey::T, is_on),
-        68 => handle_key(VKey::Np5, is_on),
-        69 => handle_key(VKey::Y, is_on),
-        70 => handle_key(VKey::Np6, is_on),
-        71 => handle_key(VKey::U, is_on),
+        60 => click(VKey::Q),
+        61 => click(VKey::I),
+        62 => click(VKey::W),
+        63 => click(VKey::O),
+        64 => click(VKey::E),
+        65 => click(VKey::R),
+        66 => click(VKey::P),
+        67 => click(VKey::T),
+        68 => click(VKey::Np5),
+        69 => click(VKey::Y),
+        70 => click(VKey::Np6),
+        71 => click(VKey::U),
 
-        72 => handle_key(VKey::Num1, is_on),
-        73 => handle_key(VKey::Num8, is_on),
-        74 => handle_key(VKey::Num2, is_on),
-        75 => handle_key(VKey::Num9, is_on),
-        76 => handle_key(VKey::Num3, is_on),
-        77 => handle_key(VKey::Num4, is_on),
-        78 => handle_key(VKey::Num0, is_on),
-        79 => handle_key(VKey::Num5, is_on),
-        80 => handle_key(VKey::Np8, is_on),
-        81 => handle_key(VKey::Num6, is_on),
-        82 => handle_key(VKey::Np9, is_on),
-        83 => handle_key(VKey::Num7, is_on),
+        72 => click(VKey::Num1),
+        73 => click(VKey::Num8),
+        74 => click(VKey::Num2),
+        75 => click(VKey::Num9),
+        76 => click(VKey::Num3),
+        77 => click(VKey::Num4),
+        78 => click(VKey::Num0),
+        79 => click(VKey::Num5),
+        80 => click(VKey::Np8),
+        81 => click(VKey::Num6),
+        82 => click(VKey::Np9),
+        83 => click(VKey::Num7),
 
-        84 => handle_key(VKey::F1, is_on),
-        85 => handle_key(VKey::F8, is_on),
-        86 => handle_key(VKey::F2, is_on),
-        87 => handle_key(VKey::F9, is_on),
-        88 => handle_key(VKey::F3, is_on),
-        89 => handle_key(VKey::F4, is_on),
-        90 => handle_key(VKey::F10, is_on),
-        91 => handle_key(VKey::F5, is_on),
-        92 => handle_key(VKey::NpDivide, is_on),
-        93 => handle_key(VKey::F6, is_on),
-        94 => handle_key(VKey::NpMultiply, is_on),
-        95 => handle_key(VKey::F7, is_on),
+        84 => click(VKey::F1),
+        85 => click(VKey::F8),
+        86 => click(VKey::F2),
+        87 => click(VKey::F9),
+        88 => click(VKey::F3),
+        89 => click(VKey::F4),
+        90 => click(VKey::F10),
+        91 => click(VKey::F5),
+        92 => click(VKey::NpDivide),
+        93 => click(VKey::F6),
+        94 => click(VKey::NpMultiply),
+        95 => click(VKey::F7),
         _ => {}
     };
 }
@@ -274,22 +284,24 @@ fn note_to_key_and_mice(val: i32) -> Option<(VKey, &'static [MouseButton])> {
     Some(res)
 }
 
-fn press(vk: VKey) {
+#[inline]
+fn key_event(vk: VKey, flags: u32) {
     unsafe {
-        let input = &[INPUT {
+        let input = [INPUT {
             type_: INPUT_KEYBOARD,
             u: {
                 let mut u = mem::zeroed::<INPUT_u>();
                 *u.ki_mut() = KEYBDINPUT {
                     wVk: 0,
                     wScan: MapVirtualKeyA(vk as _, MAPVK_VK_TO_VSC) as _,
-                    dwFlags: KEYEVENTF_SCANCODE,
+                    dwFlags: flags,
                     time: 0,
                     dwExtraInfo: 0,
                 };
                 u
             },
         }];
+
         SendInput(
             input.len() as _,
             input.as_ptr() as _,
@@ -298,28 +310,14 @@ fn press(vk: VKey) {
     }
 }
 
+#[inline]
+fn press(vk: VKey) {
+    key_event(vk, KEYEVENTF_SCANCODE);
+}
+
+#[inline]
 fn release(vk: VKey) {
-    unsafe {
-        let input = &[INPUT {
-            type_: INPUT_KEYBOARD,
-            u: {
-                let mut u = mem::zeroed::<INPUT_u>();
-                *u.ki_mut() = KEYBDINPUT {
-                    wVk: 0,
-                    wScan: MapVirtualKeyA(vk as _, MAPVK_VK_TO_VSC) as _,
-                    dwFlags: KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP,
-                    time: 0,
-                    dwExtraInfo: 0,
-                };
-                u
-            },
-        }];
-        SendInput(
-            input.len() as _,
-            input.as_ptr() as _,
-            size_of::<INPUT>() as _,
-        );
-    }
+    key_event(vk, KEYEVENTF_SCANCODE | KEYEVENTF_KEYUP);
 }
 
 #[inline]
